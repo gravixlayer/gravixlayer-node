@@ -71,7 +71,11 @@ jobs:
 
     - name: Create GitHub Release
       if: steps.version.outputs.bump != 'none'
-      uses: actions/create-release@v1
+      run: |
+        gh release create "v$NEW_VERSION" \
+          --title "Release v$NEW_VERSION" \
+          --notes "$RELEASE_NOTES" \
+          --latest
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
