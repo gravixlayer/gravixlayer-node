@@ -53,11 +53,17 @@ jobs:
 
     - name: Commit and tag
       run: |
-        git add package.json package-lock.json
-        git commit -m "chore(release): $NEW_VERSION"
-        git tag "v$NEW_VERSION"
-        git push origin main
-        git push origin "v$NEW_VERSION"
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+
+      - name: Commit and push changes
+        run: |
+          git add package.json package-lock.json
+          git commit -m "chore(release): $NEW_VERSION"
+          git tag "v$NEW_VERSION"
+          git push origin main
+          git push origin "v$NEW_VERSION"
 
     - name: Create Release
       uses: actions/create-release@v1
