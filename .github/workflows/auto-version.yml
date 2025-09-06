@@ -3,126 +3,96 @@ name: Auto Version and Release
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
-    inputs:
-      version_type:
-        description: 'Version bump type'
-        required: true
-        default: 'patch'
-        type: choice
-        options:
-        - patch
-        - minor
-        - major
+  pull_request:
+    branches: [ main ]
 
 jobs:
   auto-version:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push'
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
+        token: ${{ secrets.NPM_TOKEN }}
         fetch-depth: 0
-        token: ${{ secrets.GH_PAT }}
-    
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
         registry-url: 'https://registry.npmjs.org'
-    
+
     - name: Install dependencies
       run: npm ci
-    
+
     - name: Run tests
       run: npm test
-    
+
     - name: Build project
       run: npm run build
-    
+
     - name: Determine version bump
-      id: version_bump
+      id: version
       run: |
-        # Get commits since last release
-        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-        COMMITS=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s" --no-merges)
+        COMMIT_MSG="$(git log -1 --pretty=%B)"
+        echo "Commit message: $COMMIT_MSG"
         
-        # Determine version bump type
-        if echo "$COMMITS" | grep -q "^feat!"; then
-          VERSION_TYPE="major"
-        elif echo "$COMMITS" | grep -q "^feat:"; then
-          VERSION_TYPE="minor"
-        elif echo "$COMMITS" | grep -q "^fix:"; then
-          VERSION_TYPE="patch"
+        if [[ $COMMIT_MSG == major:* ]]; then
+          echo "bump=major" >> $GITHUB_OUTPUT
+          echo "Version bump: major (1.0.0)"
+        elif [[ $COMMIT_MSG == minor:* ]]; then
+          echo "bump=minor" >> $GITHUB_OUTPUT
+          echo "Version bump: minor (0.1.0)"
+        elif [[ $COMMIT_MSG == fix:* ]]; then
+          echo "bump=patch" >> $GITHUB_OUTPUT
+          echo "Version bump: patch (0.0.1)"
         else
-          VERSION_TYPE="patch"
+          echo "bump=none" >> $GITHUB_OUTPUT
+          echo "No version bump needed"
         fi
-        
-        # Override with manual input if provided
-        if [ "${{ github.event.inputs.version_type }}" != "" ]; then
-          VERSION_TYPE="${{ github.event.inputs.version_type }}"
-        fi
-        
-        echo "version_type=$VERSION_TYPE" >> $GITHUB_OUTPUT
-        echo "Version bump type: $VERSION_TYPE"
-    
-    - name: Bump version and create release
+
+    - name: Bump version
+      if: steps.version.outputs.bump != 'none'
       run: |
-        # Configure git
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        
-        # Bump version
-        npm version ${{ steps.version_bump.outputs.version_type }} --no-git-tag-version
-        
-        # Get new version
+        npm version ${{ steps.version.outputs.bump }} --no-git-tag-version
         NEW_VERSION=$(node -p "require('./package.json').version")
-        
-        # Commit version bump
-        git add package.json package-lock.json
-        git commit -m "chore: bump version to $NEW_VERSION"
-        
-        # Create and push tag
-        git tag "v$NEW_VERSION"
-        git push https://x-access-token:${{ secrets.GH_PAT }}@github.com/gravixlayer/gravixlayer-js.git origin main
-        git push https://x-access-token:${{ secrets.GH_PAT }}@github.com/gravixlayer/gravixlayer-js.git origin "v$NEW_VERSION"
-        
         echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-    
-    - name: Get release notes
+
+    - name: Commit version bump
+      if: steps.version.outputs.bump != 'none'
+      run: |
+        git add package.json package-lock.json
+        git commit -m "chore(release): $NEW_VERSION"
+        git tag "v$NEW_VERSION"
+        git push origin main
+        git push origin "v$NEW_VERSION"
+
+    - name: Generate release notes
+      if: steps.version.outputs.bump != 'none'
       id: release_notes
       run: |
-        LATEST_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
-        
-        if [ -z "$LATEST_TAG" ]; then
-          COMMITS=$(git log --pretty=format:"%s" --no-merges HEAD~1)
-        else
-          COMMITS=$(git log ${LATEST_TAG}..HEAD~1 --pretty=format:"%s" --no-merges)
-        fi
-        
-        FILTERED_COMMITS=$(echo "$COMMITS" | grep -v "^chore:" | sed 's/^[a-z]*: *//' | sed 's/^[A-Z]/\L&/' | head -10)
-        RELEASE_NOTES=$(echo "$FILTERED_COMMITS" | tr '\n' ';' | sed 's/;$//' | sed 's/;/; /g')
-        RELEASE_NOTES=$(echo "$RELEASE_NOTES" | sed 's/^./\U&/')
-        
-        if [ -z "$RELEASE_NOTES" ]; then
-          RELEASE_NOTES="Minor updates and improvements"
-        fi
-        
-        echo "release_notes=$RELEASE_NOTES" >> $GITHUB_OUTPUT
-    
+        COMMIT_MSG="$(git log -1 --skip=1 --pretty=%B)"
+        CLEAN_MSG=$(echo "$COMMIT_MSG" | sed 's/^[a-z]*: *//' | sed 's/^[A-Z]/\L&/')
+        echo "RELEASE_NOTES=$CLEAN_MSG" >> $GITHUB_ENV
+
     - name: Create Release
+      if: steps.version.outputs.bump != 'none'
       uses: actions/create-release@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+        GITHUB_TOKEN: ${{ secrets.NPM_TOKEN }}
       with:
         tag_name: v${{ env.NEW_VERSION }}
         release_name: Release v${{ env.NEW_VERSION }}
-        body: ${{ steps.release_notes.outputs.release_notes }}
+        body: ${{ env.RELEASE_NOTES }}
         draft: false
         prerelease: false
-    
+
     - name: Publish to npm
+      if: steps.version.outputs.bump != 'none'
       run: npm publish
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
