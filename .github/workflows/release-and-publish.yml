@@ -13,9 +13,9 @@ on:
         - minor
         - major
       release_notes:
-        description: 'Release notes'
+        description: 'Release notes (optional - will use latest commit message if empty)'
         required: false
-        default: 'Manual release'
+        default: ''
 
 jobs:
   release:
@@ -42,12 +42,33 @@ jobs:
     - name: Build project
       run: npm run build
 
-    - name: Bump version and publish
+    - name: Bump version
       run: |
         npm version ${{ github.event.inputs.version_type }} --no-git-tag-version
         NEW_VERSION=$(node -p "require('./package.json').version")
         echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-        echo "Publishing version $NEW_VERSION to NPM"
+
+    - name: Prepare release notes
+      id: release_notes
+      run: |
+        if [ -n "${{ github.event.inputs.release_notes }}" ]; then
+          echo "FINAL_RELEASE_NOTES=${{ github.event.inputs.release_notes }}" >> $GITHUB_ENV
+        else
+          COMMIT_MSG="$(git log -1 --pretty=%B)"
+          CLEAN_MSG=$(echo "$COMMIT_MSG" | sed 's/^[a-z]*: *//' | sed 's/^[A-Z]/\L&/')
+          echo "FINAL_RELEASE_NOTES=$CLEAN_MSG" >> $GITHUB_ENV
+        fi
+
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ env.NEW_VERSION }}
+        release_name: Release v${{ env.NEW_VERSION }}
+        body: ${{ env.FINAL_RELEASE_NOTES }}
+        draft: false
+        prerelease: false
 
     - name: Publish to npm
       run: npm publish

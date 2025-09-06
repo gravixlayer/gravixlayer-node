@@ -52,13 +52,34 @@ jobs:
           echo "No version bump needed"
         fi
 
-    - name: Bump version and publish
+    - name: Bump version
       if: steps.version.outputs.bump != 'none'
       run: |
         npm version ${{ steps.version.outputs.bump }} --no-git-tag-version
         NEW_VERSION=$(node -p "require('./package.json').version")
         echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-        echo "Publishing version $NEW_VERSION to NPM"
+
+    - name: Get commit message for release notes
+      if: steps.version.outputs.bump != 'none'
+      id: release_notes
+      run: |
+        COMMIT_MSG="$(git log -1 --pretty=%B)"
+        # Clean up the commit message by removing prefixes
+        CLEAN_MSG=$(echo "$COMMIT_MSG" | sed 's/^[a-z]*: *//' | sed 's/^[A-Z]/\L&/')
+        echo "RELEASE_NOTES=$CLEAN_MSG" >> $GITHUB_ENV
+        echo "Release notes: $CLEAN_MSG"
+
+    - name: Create GitHub Release
+      if: steps.version.outputs.bump != 'none'
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ env.NEW_VERSION }}
+        release_name: Release v${{ env.NEW_VERSION }}
+        body: ${{ env.RELEASE_NOTES }}
+        draft: false
+        prerelease: false
 
     - name: Publish to npm
       if: steps.version.outputs.bump != 'none'
