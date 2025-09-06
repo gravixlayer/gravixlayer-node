@@ -25,7 +25,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
         fetch-depth: 0
 
     - name: Setup Node.js
@@ -43,38 +42,12 @@ jobs:
     - name: Build project
       run: npm run build
 
-    - name: Bump version
+    - name: Bump version and publish
       run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
         npm version ${{ github.event.inputs.version_type }} --no-git-tag-version
         NEW_VERSION=$(node -p "require('./package.json').version")
         echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-
-    - name: Commit and tag
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-
-      - name: Commit and push changes
-        run: |
-          git add package.json package-lock.json
-          git commit -m "chore(release): $NEW_VERSION"
-          git tag "v$NEW_VERSION"
-          git push origin main
-          git push origin "v$NEW_VERSION"
-
-    - name: Create Release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v${{ env.NEW_VERSION }}
-        release_name: Release v${{ env.NEW_VERSION }}
-        body: ${{ github.event.inputs.release_notes }}
-        draft: false
-        prerelease: false
+        echo "Publishing version $NEW_VERSION to NPM"
 
     - name: Publish to npm
       run: npm publish
