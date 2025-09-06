@@ -1,0 +1,124 @@
+name: Release and Publish
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  release-and-publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        registry-url: 'https://registry.npmjs.org'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run tests
+      run: npm test
+    
+    - name: Build project
+      run: npm run build
+    
+    - name: Get commit messages since last release
+      id: get_commits
+      run: |
+        # Get the latest release tag
+        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        
+        if [ -z "$LATEST_TAG" ]; then
+          # If no previous tags, get all commits
+          COMMITS=$(git log --pretty=format:"%s" --no-merges)
+        else
+          # Get commits since last tag
+          COMMITS=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s" --no-merges)
+        fi
+        
+        # Filter out chore commits and format
+        FILTERED_COMMITS=$(echo "$COMMITS" | grep -v "^chore:" | sed 's/^[a-z]*: *//' | sed 's/^[A-Z]/\L&/' | head -10)
+        
+        # Join commits with semicolons
+        RELEASE_NOTES=$(echo "$FILTERED_COMMITS" | tr '\n' ';' | sed 's/;$//' | sed 's/;/; /g')
+        
+        # Capitalize first letter
+        RELEASE_NOTES=$(echo "$RELEASE_NOTES" | sed 's/^./\U&/')
+        
+        if [ -z "$RELEASE_NOTES" ]; then
+          RELEASE_NOTES="Minor updates and improvements"
+        fi
+        
+        echo "release_notes=$RELEASE_NOTES" >> $GITHUB_OUTPUT
+        echo "Release notes: $RELEASE_NOTES"
+    
+    - name: Check if version changed
+      id: version_check
+      run: |
+        CURRENT_VERSION=$(node -p "require('./package.json').version")
+        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0")
+        
+        echo "Current version: $CURRENT_VERSION"
+        echo "Latest tag version: $LATEST_TAG"
+        
+        if [ "$CURRENT_VERSION" != "$LATEST_TAG" ]; then
+          echo "version_changed=true" >> $GITHUB_OUTPUT
+          echo "new_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+        else
+          echo "version_changed=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Create Release
+      if: steps.version_check.outputs.version_changed == 'true'
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.version_check.outputs.new_version }}
+        release_name: Release v${{ steps.version_check.outputs.new_version }}
+        body: ${{ steps.get_commits.outputs.release_notes }}
+        draft: false
+        prerelease: false
+    
+    - name: Publish to npm
+      if: steps.version_check.outputs.version_changed == 'true'
+      run: npm publish
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+    
+    - name: Update CHANGELOG
+      if: steps.version_check.outputs.version_changed == 'true'
+      run: |
+        DATE=$(date +"%Y-%m-%d")
+        VERSION="v${{ steps.version_check.outputs.new_version }}"
+        NOTES="${{ steps.get_commits.outputs.release_notes }}"
+        
+        # Create new changelog entry
+        echo "## $VERSION - $DATE" > temp_changelog.md
+        echo "" >> temp_changelog.md
+        echo "### Changes" >> temp_changelog.md
+        echo "- $NOTES" >> temp_changelog.md
+        echo "" >> temp_changelog.md
+        
+        # Prepend to existing changelog
+        if [ -f CHANGELOG.md ]; then
+          cat CHANGELOG.md >> temp_changelog.md
+        fi
+        
+        mv temp_changelog.md CHANGELOG.md
+        
+        # Commit changelog update
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add CHANGELOG.md
+        git commit -m "chore: update changelog for $VERSION" || exit 0
+        git push
