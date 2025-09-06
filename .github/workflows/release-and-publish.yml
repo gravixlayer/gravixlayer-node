@@ -17,6 +17,10 @@ on:
         required: false
         default: ''
 
+permissions:
+  contents: write
+  id-token: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -60,19 +64,15 @@ jobs:
         fi
 
     - name: Create GitHub Release
-      run: |
-        gh release create "v$NEW_VERSION" \
-          --title "Release v$NEW_VERSION" \
-          --notes "$FINAL_RELEASE_NOTES" \
-          --latest
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ env.NEW_VERSION }}
-        release_name: Release v${{ env.NEW_VERSION }}
+        name: "Release v${{ env.NEW_VERSION }}"
         body: ${{ env.FINAL_RELEASE_NOTES }}
         draft: false
         prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Publish to npm
       run: npm publish
