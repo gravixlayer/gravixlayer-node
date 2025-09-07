@@ -34,7 +34,6 @@ console.log(completion.choices[0].message.content);
 - **Chat Completions**: Full support for chat-based interactions
 - **Embeddings**: Generate embeddings for text
 - **Streaming**: Real-time streaming responses
-- **TypeScript**: Full TypeScript support with type definitions
 
 ## API Reference
 
