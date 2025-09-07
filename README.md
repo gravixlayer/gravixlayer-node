@@ -14,7 +14,7 @@ npm install gravixlayer
 import { GravixLayer } from 'gravixlayer';
 
 const client = new GravixLayer({
-  apiKey: process.env.GRAVIXLAYER_API_KEY, // This is the default and can be omitted
+  apiKey: process.env.GRAVIXLAYER_API_KEY, 
 });
 
 const completion = await client.chat.completions.create({
