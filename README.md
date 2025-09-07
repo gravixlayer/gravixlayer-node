@@ -15,7 +15,6 @@ import { GravixLayer } from 'gravixlayer';
 
 const client = new GravixLayer({
   apiKey: process.env.GRAVIXLAYER_API_KEY, // This is the default and can be omitted
-  baseURL: "https://api.gravixlayer.com/v1/inference", // This is the default and can be omitted
 });
 
 const completion = await client.chat.completions.create({
