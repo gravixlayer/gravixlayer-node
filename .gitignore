@@ -97,4 +97,4 @@ jest.config.js
 
 
 examples/
-test
+tests
