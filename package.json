@@ -1,6 +1,6 @@
 {
   "name": "gravixlayer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -36,7 +36,8 @@
     "test:all": "node test/run-all-tests.cjs",
     "test:comprehensive": "npm run build && npm run test:all",
     "prepublishOnly": "npm run build",
-    "release:patch": "npm version patch && git push origin main --tags",
+    "release:patch": "node scripts/patch-release.js",
+    "release": "node scripts/patch-release.js",
     "release:minor": "npm version minor && git push origin main --tags",
     "release:major": "npm version major && git push origin main --tags"
   },
