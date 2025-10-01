@@ -49,29 +49,38 @@ jobs:
     - name: Run post-build tests
       run: npm run test:unit
 
-    - name: Bump version
+    - name: Bump version and get new version
+      id: version
       run: |
+        echo "Current version: $(node -p "require('./package.json').version")"
+        echo "Bumping ${{ github.event.inputs.version_type }} version..."
         npm version ${{ github.event.inputs.version_type }} --no-git-tag-version
         NEW_VERSION=$(node -p "require('./package.json').version")
-        echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+        echo "New version: $NEW_VERSION"
+        echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
     - name: Prepare release notes
       id: release_notes
       run: |
         if [ -n "${{ github.event.inputs.release_notes }}" ]; then
-          echo "FINAL_RELEASE_NOTES=${{ github.event.inputs.release_notes }}" >> $GITHUB_ENV
+          RELEASE_NOTES="${{ github.event.inputs.release_notes }}"
         else
           COMMIT_MSG="$(git log -1 --pretty=%B)"
-          CLEAN_MSG=$(echo "$COMMIT_MSG" | sed 's/^[a-z]*: *//' | sed 's/^[A-Z]/\L&/')
-          echo "FINAL_RELEASE_NOTES=$CLEAN_MSG" >> $GITHUB_ENV
+          RELEASE_NOTES=$(echo "$COMMIT_MSG" | sed 's/^[a-z]*: *//' | sed 's/^[A-Z]/\L&/')
         fi
+        echo "Release notes: $RELEASE_NOTES"
+        {
+          echo 'notes<<EOF'
+          echo "$RELEASE_NOTES"
+          echo EOF
+        } >> $GITHUB_OUTPUT
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: v${{ env.NEW_VERSION }}
-        name: "Release v${{ env.NEW_VERSION }}"
-        body: ${{ env.FINAL_RELEASE_NOTES }}
+        tag_name: v${{ steps.version.outputs.version }}
+        name: "Release v${{ steps.version.outputs.version }}"
+        body: ${{ steps.release_notes.outputs.notes }}
         draft: false
         prerelease: false
       env:
@@ -79,7 +88,8 @@ jobs:
 
     - name: Publish to npm
       run: |
-        echo "Publishing to NPM..."
+        echo "Publishing gravixlayer@${{ steps.version.outputs.version }} to NPM..."
         npm publish --access public
+        echo "✅ Successfully published to NPM!"
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
