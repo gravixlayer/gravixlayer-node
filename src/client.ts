@@ -12,6 +12,8 @@ import { Embeddings } from './resources/embeddings';
 import { Completions } from './resources/completions';
 import { Deployments } from './resources/deployments';
 import { Accelerators } from './resources/accelerators';
+import { Files } from './resources/files';
+import { VectorDatabase } from './resources/vectors/main';
 
 export interface GravixLayerOptions {
   apiKey?: string;
@@ -40,6 +42,8 @@ export class GravixLayer {
   public completions: Completions;
   public deployments: Deployments;
   public accelerators: Accelerators;
+  public files: Files;
+  public vectors: VectorDatabase;
 
   constructor(options: GravixLayerOptions = {}) {
     this.apiKey = options.apiKey || process.env.GRAVIXLAYER_API_KEY || '';
@@ -69,6 +73,8 @@ export class GravixLayer {
     this.completions = new Completions(this);
     this.deployments = new Deployments(this);
     this.accelerators = new Accelerators(this);
+    this.files = new Files(this);
+    this.vectors = new VectorDatabase(this);
   }
 
   async _makeRequest(

@@ -47,6 +47,42 @@ export type {
   Accelerator,
 } from './types/accelerators';
 
+// Files types
+export type {
+  FileObject,
+  FileUploadResponse,
+  FileListResponse,
+  FileDeleteResponse,
+  FileCreateParams,
+  FilePurpose,
+} from './types/files';
+
+// Vector types
+export type {
+  VectorIndex,
+  VectorIndexList,
+  Vector,
+  TextVector,
+  VectorSearchHit,
+  VectorSearchResponse,
+  TextSearchResponse,
+  BatchUpsertResponse,
+  VectorListResponse,
+  VectorDictResponse,
+  CreateIndexRequest,
+  UpdateIndexRequest,
+  UpsertVectorRequest,
+  UpsertTextVectorRequest,
+  BatchUpsertRequest,
+  BatchUpsertTextRequest,
+  VectorSearchRequest,
+  TextSearchRequest,
+  UpdateVectorRequest,
+  SupportedMetric,
+  SupportedVectorType,
+  SupportedIndexType,
+} from './types/vectors';
+
 // Exception types
 export {
   GravixLayerError,

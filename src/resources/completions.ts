@@ -42,47 +42,91 @@ export class Completions {
       throw new Error('No response body for streaming');
     }
 
-    const reader = response.body.getReader();
+    // node-fetch v3 returns a ReadableStream, but we need to handle it differently
     const decoder = new TextDecoder();
     let buffer = '';
 
     try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      // For node-fetch, response.body is a ReadableStream
+      const reader = response.body as any;
+      
+      // Use async iteration if available
+      if (reader[Symbol.asyncIterator]) {
+        for await (const chunk of reader) {
+          buffer += decoder.decode(chunk, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (let line of lines) {
-          line = line.trim();
-          
-          // Handle SSE format
-          if (line.startsWith('data: ')) {
-            line = line.slice(6);
-          }
-          
-          // Skip empty lines and [DONE] marker
-          if (!line || line === '[DONE]') {
-            continue;
-          }
-          
-          try {
-            const chunkData = JSON.parse(line);
-            const parsedChunk = this._parseResponse(chunkData, true);
+          for (let line of lines) {
+            line = line.trim();
             
-            if (parsedChunk.choices && parsedChunk.choices.length > 0) {
-              yield parsedChunk;
+            // Handle SSE format
+            if (line.startsWith('data: ')) {
+              line = line.slice(6);
             }
-          } catch (error) {
-            // Skip malformed JSON
-            continue;
+            
+            // Skip empty lines and [DONE] marker
+            if (!line || line === '[DONE]') {
+              continue;
+            }
+            
+            try {
+              const chunkData = JSON.parse(line);
+              const parsedChunk = this._parseResponse(chunkData, true);
+              
+              if (parsedChunk.choices && parsedChunk.choices.length > 0) {
+                yield parsedChunk;
+              }
+            } catch (error) {
+              // Skip malformed JSON
+              continue;
+            }
           }
         }
+      } else {
+        // Fallback to getReader() method
+        const streamReader = reader.getReader();
+        try {
+          while (true) {
+            const { done, value } = await streamReader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (let line of lines) {
+              line = line.trim();
+              
+              // Handle SSE format
+              if (line.startsWith('data: ')) {
+                line = line.slice(6);
+              }
+              
+              // Skip empty lines and [DONE] marker
+              if (!line || line === '[DONE]') {
+                continue;
+              }
+              
+              try {
+                const chunkData = JSON.parse(line);
+                const parsedChunk = this._parseResponse(chunkData, true);
+                
+                if (parsedChunk.choices && parsedChunk.choices.length > 0) {
+                  yield parsedChunk;
+                }
+              } catch (error) {
+                // Skip malformed JSON
+                continue;
+              }
+            }
+          }
+        } finally {
+          streamReader.releaseLock();
+        }
       }
-    } finally {
-      reader.releaseLock();
+    } catch (error) {
+      throw new Error(`Streaming error: ${error}`);
     }
   }
 

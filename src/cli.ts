@@ -1,7 +1,7 @@
-#!/usr/bin/env node
-
 import { GravixLayer } from './client';
 import { program } from 'commander';
+import { readFileSync, writeFileSync } from 'fs';
+import { FilePurpose } from './types/files';
 
 interface ChatOptions {
   apiKey?: string;
@@ -39,6 +39,60 @@ interface HardwareOptions {
   apiKey?: string;
   list?: boolean;
   json?: boolean;
+}
+
+interface FileUploadOptions {
+  apiKey?: string;
+  purpose: FilePurpose;
+  fileName?: string;
+  expiresAfter?: number;
+}
+
+interface FileListOptions {
+  apiKey?: string;
+  json?: boolean;
+}
+
+interface FileInfoOptions {
+  apiKey?: string;
+}
+
+interface FileDownloadOptions {
+  apiKey?: string;
+  output?: string;
+}
+
+interface FileDeleteOptions {
+  apiKey?: string;
+}
+
+interface VectorIndexCreateOptions {
+  apiKey?: string;
+  name: string;
+  dimension: number;
+  metric: string;
+  metadata?: string;
+}
+
+interface VectorIndexListOptions {
+  apiKey?: string;
+  json?: boolean;
+}
+
+interface VectorUpsertTextOptions {
+  apiKey?: string;
+  text: string;
+  model: string;
+  id?: string;
+  metadata?: string;
+}
+
+interface VectorSearchTextOptions {
+  apiKey?: string;
+  query: string;
+  model: string;
+  topK: number;
+  filter?: string;
 }
 
 async function handleChatCommands(options: ChatOptions) {
@@ -318,6 +372,301 @@ async function handleDeploymentDelete(deploymentId: string, options: DeploymentD
   }
 }
 
+async function handleFileUpload(filePath: string, options: FileUploadOptions) {
+  const client = new GravixLayer({
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+  });
+
+  try {
+    console.log(`Uploading file '${filePath}' with purpose '${options.purpose}'...`);
+    
+    const response = await client.files.create({
+      file: filePath,
+      purpose: options.purpose,
+      filename: options.fileName,
+      expires_after: options.expiresAfter
+    });
+
+    console.log('✅ File uploaded successfully!');
+    console.log(`File Name: ${response.file_name}`);
+    console.log(`Purpose: ${response.purpose}`);
+    console.log(`Message: ${response.message}`);
+  } catch (error) {
+    console.error(`❌ Error uploading file: ${error}`);
+    process.exit(1);
+  }
+}
+
+async function handleFileList(options: FileListOptions) {
+  const client = new GravixLayer({
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+  });
+
+  try {
+    const response = await client.files.list();
+
+    if (options.json) {
+      console.log(JSON.stringify(response.data, null, 2));
+    } else {
+      if (response.data.length === 0) {
+        console.log('No files found.');
+      } else {
+        console.log(`Found ${response.data.length} file(s):`);
+        console.log();
+        for (const file of response.data) {
+          console.log(`ID: ${file.id}`);
+          console.log(`Filename: ${file.filename}`);
+          console.log(`Size: ${file.bytes} bytes`);
+          console.log(`Purpose: ${file.purpose}`);
+          console.log(`Created: ${new Date(file.created_at * 1000).toISOString()}`);
+          if (file.expires_after) {
+            console.log(`Expires After: ${file.expires_after} seconds`);
+          }
+          console.log('---');
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`❌ Error listing files: ${error}`);
+    process.exit(1);
+  }
+}
+
+async function handleFileInfo(fileIdOrName: string, options: FileInfoOptions) {
+  const client = new GravixLayer({
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+  });
+
+  try {
+    let fileId = fileIdOrName;
+    
+    // If it doesn't look like a file ID, try to find by filename
+    if (!fileIdOrName.startsWith('file-')) {
+      const files = await client.files.list();
+      const file = files.data.find(f => f.filename === fileIdOrName);
+      if (!file) {
+        console.error(`❌ File not found: ${fileIdOrName}`);
+        process.exit(1);
+      }
+      fileId = file.id;
+    }
+
+    const file = await client.files.retrieve(fileId);
+    
+    console.log(`File Information:`);
+    console.log(`ID: ${file.id}`);
+    console.log(`Filename: ${file.filename}`);
+    console.log(`Size: ${file.bytes} bytes`);
+    console.log(`Purpose: ${file.purpose}`);
+    console.log(`Created: ${new Date(file.created_at * 1000).toISOString()}`);
+    if (file.expires_after) {
+      console.log(`Expires After: ${file.expires_after} seconds`);
+    }
+  } catch (error) {
+    console.error(`❌ Error getting file info: ${error}`);
+    process.exit(1);
+  }
+}
+
+async function handleFileDownload(fileIdOrName: string, options: FileDownloadOptions) {
+  const client = new GravixLayer({
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+  });
+
+  try {
+    let fileId = fileIdOrName;
+    let filename = options.output;
+    
+    // If it doesn't look like a file ID, try to find by filename
+    if (!fileIdOrName.startsWith('file-')) {
+      const files = await client.files.list();
+      const file = files.data.find(f => f.filename === fileIdOrName);
+      if (!file) {
+        console.error(`❌ File not found: ${fileIdOrName}`);
+        process.exit(1);
+      }
+      fileId = file.id;
+      if (!filename) {
+        filename = file.filename;
+      }
+    }
+
+    if (!filename) {
+      // Get file info to determine filename
+      const fileInfo = await client.files.retrieve(fileId);
+      filename = fileInfo.filename;
+    }
+
+    console.log(`Downloading file to '${filename}'...`);
+    const content = await client.files.content(fileId);
+    writeFileSync(filename, content);
+    
+    console.log(`✅ File downloaded successfully to '${filename}'`);
+  } catch (error) {
+    console.error(`❌ Error downloading file: ${error}`);
+    process.exit(1);
+  }
+}
+
+async function handleFileDelete(fileIdOrName: string, options: FileDeleteOptions) {
+  const client = new GravixLayer({
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+  });
+
+  try {
+    let fileId = fileIdOrName;
+    
+    // If it doesn't look like a file ID, try to find by filename
+    if (!fileIdOrName.startsWith('file-')) {
+      const files = await client.files.list();
+      const file = files.data.find(f => f.filename === fileIdOrName);
+      if (!file) {
+        console.error(`❌ File not found: ${fileIdOrName}`);
+        process.exit(1);
+      }
+      fileId = file.id;
+    }
+
+    console.log(`Deleting file ${fileId}...`);
+    const response = await client.files.delete(fileId);
+    
+    console.log('✅ File deleted successfully!');
+    console.log(`File Name: ${response.file_name}`);
+    console.log(`Message: ${response.message}`);
+  } catch (error) {
+    console.error(`❌ Error deleting file: ${error}`);
+    process.exit(1);
+  }
+}
+
+async function handleVectorIndexCreate(options: VectorIndexCreateOptions) {
+  const client = new GravixLayer({
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+  });
+
+  try {
+    console.log(`Creating vector index '${options.name}'...`);
+    
+    const metadata = options.metadata ? JSON.parse(options.metadata) : undefined;
+    
+    const index = await client.vectors.indexes.create({
+      name: options.name,
+      dimension: options.dimension,
+      metric: options.metric,
+      metadata
+    });
+
+    console.log('✅ Vector index created successfully!');
+    console.log(`Index ID: ${index.id}`);
+    console.log(`Name: ${index.name}`);
+    console.log(`Dimension: ${index.dimension}`);
+    console.log(`Metric: ${index.metric}`);
+    console.log(`Status: ${index.status}`);
+  } catch (error) {
+    console.error(`❌ Error creating vector index: ${error}`);
+    process.exit(1);
+  }
+}
+
+async function handleVectorIndexList(options: VectorIndexListOptions) {
+  const client = new GravixLayer({
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+  });
+
+  try {
+    const response = await client.vectors.indexes.list();
+
+    if (options.json) {
+      console.log(JSON.stringify(response.indexes, null, 2));
+    } else {
+      if (response.indexes.length === 0) {
+        console.log('No vector indexes found.');
+      } else {
+        console.log(`Found ${response.indexes.length} vector index(es):`);
+        console.log();
+        for (const index of response.indexes) {
+          console.log(`ID: ${index.id}`);
+          console.log(`Name: ${index.name}`);
+          console.log(`Dimension: ${index.dimension}`);
+          console.log(`Metric: ${index.metric}`);
+          console.log(`Status: ${index.status}`);
+          console.log(`Created: ${index.created_at}`);
+          if (index.metadata) {
+            console.log(`Metadata: ${JSON.stringify(index.metadata)}`);
+          }
+          console.log('---');
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`❌ Error listing vector indexes: ${error}`);
+    process.exit(1);
+  }
+}
+
+async function handleVectorUpsertText(indexId: string, options: VectorUpsertTextOptions) {
+  const client = new GravixLayer({
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+  });
+
+  try {
+    console.log(`Upserting text vector to index '${indexId}'...`);
+    
+    const metadata = options.metadata ? JSON.parse(options.metadata) : undefined;
+    
+    const vector = await client.vectors.index(indexId).upsertText({
+      text: options.text,
+      model: options.model,
+      id: options.id,
+      metadata
+    });
+
+    console.log('✅ Text vector upserted successfully!');
+    console.log(`Vector ID: ${vector.id}`);
+    console.log(`Text: ${vector.text}`);
+    console.log(`Model: ${vector.model}`);
+    console.log(`Embedding Dimension: ${vector.embedding.length}`);
+  } catch (error) {
+    console.error(`❌ Error upserting text vector: ${error}`);
+    process.exit(1);
+  }
+}
+
+async function handleVectorSearchText(indexId: string, options: VectorSearchTextOptions) {
+  const client = new GravixLayer({
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+  });
+
+  try {
+    console.log(`Searching vectors in index '${indexId}'...`);
+    
+    const filter = options.filter ? JSON.parse(options.filter) : undefined;
+    
+    const results = await client.vectors.index(indexId).searchText({
+      query: options.query,
+      model: options.model,
+      top_k: options.topK,
+      filter
+    });
+
+    console.log(`✅ Search completed in ${results.query_time_ms}ms`);
+    console.log(`Found ${results.hits.length} result(s):`);
+    console.log();
+    
+    for (const hit of results.hits) {
+      console.log(`ID: ${hit.id}`);
+      console.log(`Score: ${hit.score.toFixed(4)}`);
+      if (hit.metadata) {
+        console.log(`Metadata: ${JSON.stringify(hit.metadata)}`);
+      }
+      console.log('---');
+    }
+  } catch (error) {
+    console.error(`❌ Error searching vectors: ${error}`);
+    process.exit(1);
+  }
+}
+
 async function handleHardwareList(type: 'hardware' | 'gpu', options: HardwareOptions) {
   const client = new GravixLayer({
     apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
@@ -441,6 +790,173 @@ deploymentsCmd
     } else {
       console.log('Use --list flag to list available GPUs');
       console.log('Example: gravixlayer deployments gpu --list');
+    }
+  });
+
+// Files command
+const filesCmd = program
+  .command('files')
+  .description('File management');
+
+// Upload file
+filesCmd
+  .command('upload <file>')
+  .description('Upload a file')
+  .option('--api-key <key>', 'API key')
+  .requiredOption('--purpose <purpose>', 'File purpose (assistants, batch, batch_output, fine-tune, vision, user_data, evals)')
+  .option('--file-name <name>', 'Custom filename for the uploaded file')
+  .option('--expires-after <seconds>', 'File expiration time in seconds', parseInt)
+  .action((file, options) => handleFileUpload(file, options));
+
+// List files
+filesCmd
+  .command('list')
+  .description('List all files')
+  .option('--api-key <key>', 'API key')
+  .option('--json', 'Output as JSON')
+  .action((options) => handleFileList(options));
+
+// Get file info
+filesCmd
+  .command('info <fileIdOrName>')
+  .description('Get file information (by ID or filename)')
+  .option('--api-key <key>', 'API key')
+  .action((fileIdOrName, options) => handleFileInfo(fileIdOrName, options));
+
+// Download file
+filesCmd
+  .command('download <fileIdOrName>')
+  .description('Download file content (by ID or filename)')
+  .option('--api-key <key>', 'API key')
+  .option('--output <filename>', 'Output filename')
+  .action((fileIdOrName, options) => handleFileDownload(fileIdOrName, options));
+
+// Delete file
+filesCmd
+  .command('delete <fileIdOrName>')
+  .description('Delete a file (by ID or filename)')
+  .option('--api-key <key>', 'API key')
+  .action((fileIdOrName, options) => handleFileDelete(fileIdOrName, options));
+
+// Vectors command
+const vectorsCmd = program
+  .command('vectors')
+  .description('Vector database management');
+
+// Vector index commands
+const vectorIndexCmd = vectorsCmd
+  .command('index')
+  .description('Vector index management');
+
+// Create vector index
+vectorIndexCmd
+  .command('create')
+  .description('Create a vector index')
+  .option('--api-key <key>', 'API key')
+  .requiredOption('--name <name>', 'Index name')
+  .requiredOption('--dimension <dimension>', 'Vector dimension', parseInt)
+  .requiredOption('--metric <metric>', 'Distance metric (cosine, euclidean, dot_product)')
+  .option('--metadata <metadata>', 'Index metadata as JSON string')
+  .action((options) => handleVectorIndexCreate(options));
+
+// List vector indexes
+vectorIndexCmd
+  .command('list')
+  .description('List all vector indexes')
+  .option('--api-key <key>', 'API key')
+  .option('--json', 'Output as JSON')
+  .action((options) => handleVectorIndexList(options));
+
+// Delete vector index
+vectorIndexCmd
+  .command('delete <indexId>')
+  .description('Delete a vector index')
+  .option('--api-key <key>', 'API key')
+  .action(async (indexId, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      console.log(`Deleting vector index ${indexId}...`);
+      const response = await client.vectors.indexes.delete(indexId);
+      console.log('✅ Vector index deleted successfully!');
+      console.log(`Message: ${response.message}`);
+    } catch (error) {
+      console.error(`❌ Error deleting vector index: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Vector operations commands
+const vectorCmd = vectorsCmd
+  .command('vector')
+  .description('Vector operations');
+
+// Upsert text vector
+vectorCmd
+  .command('upsert-text <indexId>')
+  .description('Upsert a text vector')
+  .option('--api-key <key>', 'API key')
+  .requiredOption('--text <text>', 'Text to embed')
+  .requiredOption('--model <model>', 'Embedding model')
+  .option('--id <id>', 'Vector ID')
+  .option('--metadata <metadata>', 'Vector metadata as JSON string')
+  .action((indexId, options) => handleVectorUpsertText(indexId, options));
+
+// Search text vectors
+vectorCmd
+  .command('search-text <indexId>')
+  .description('Search vectors using text query')
+  .option('--api-key <key>', 'API key')
+  .requiredOption('--query <query>', 'Search query')
+  .requiredOption('--model <model>', 'Embedding model')
+  .option('--top-k <k>', 'Number of results to return', parseInt, 5)
+  .option('--filter <filter>', 'Search filter as JSON string')
+  .action((indexId, options) => handleVectorSearchText(indexId, options));
+
+// List vectors
+vectorCmd
+  .command('list <indexId>')
+  .description('List vectors in an index')
+  .option('--api-key <key>', 'API key')
+  .action(async (indexId, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      const response = await client.vectors.index(indexId).list();
+      console.log(`Found ${response.vectors.length} vector(s) in index '${indexId}':`);
+      console.log();
+      for (const vector of response.vectors) {
+        console.log(`ID: ${vector.id || 'N/A'}`);
+        console.log('---');
+      }
+    } catch (error) {
+      console.error(`❌ Error listing vectors: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Delete vector
+vectorCmd
+  .command('delete <indexId> <vectorId>')
+  .description('Delete a vector')
+  .option('--api-key <key>', 'API key')
+  .action(async (indexId, vectorId, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      console.log(`Deleting vector ${vectorId} from index ${indexId}...`);
+      const response = await client.vectors.index(indexId).delete(vectorId);
+      console.log('✅ Vector deleted successfully!');
+      console.log(`Message: ${response.message}`);
+    } catch (error) {
+      console.error(`❌ Error deleting vector: ${error}`);
+      process.exit(1);
     }
   });
 
