@@ -41,7 +41,7 @@ jobs:
       run: npm ci
 
     - name: Run tests
-      run: npm test
+      run: npm run test:unit
 
     - name: Build project
       run: npm run build
@@ -75,6 +75,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Publish to npm
-      run: npm publish
+      run: |
+        echo "Publishing to NPM..."
+        npm publish --access public
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

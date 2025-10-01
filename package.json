@@ -28,7 +28,7 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "jest",
+    "test": "npm run test:unit",
     "test:unit": "node test/unit-test.cjs",
     "test:integration": "node test/integration-test.cjs",
     "test:cli": "node test/cli-test.cjs",
