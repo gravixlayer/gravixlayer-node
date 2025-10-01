@@ -28,8 +28,9 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "npm run test:unit",
+    "test": "node test/simple-unit-test.cjs",
     "test:unit": "node test/unit-test.cjs",
+    "test:simple": "node test/simple-unit-test.cjs",
     "test:integration": "node test/integration-test.cjs",
     "test:cli": "node test/cli-test.cjs",
     "test:all": "node test/run-all-tests.cjs",
