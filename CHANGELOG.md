@@ -5,7 +5,7 @@ All notable changes to the GravixLayer JavaScript SDK will be documented in this
 ## [0.1.1] - 2024-12-19
 
 ### Added
-- **Memory Management**: Complete Mem0-compatible memory system
+- **Memory Management**: Complete intelligent memory system
   - Add, search, get, update, and delete memories for users
   - AI-powered memory inference and processing
   - User-specific memory isolation using vector indexes

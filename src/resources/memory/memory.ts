@@ -1,6 +1,6 @@
 /**
- * Mem0-compatible Memory implementation for GravixLayer
- * Provides exact Mem0 API compatibility using GravixLayer backend
+ * Memory management implementation for GravixLayer
+ * Provides intelligent memory storage and retrieval using GravixLayer backend
  */
 
 import type {
@@ -36,7 +36,7 @@ export class Memory {
   }
 
   /**
-   * Add memories - EXACT Mem0 API
+   * Add memories with AI-powered processing
    */
   async add(params: MemoryAddParams): Promise<MemoryResponse> {
     const { messages, user_id, metadata, infer = true } = params;
@@ -103,7 +103,7 @@ export class Memory {
   }
 
   /**
-   * Search memories - EXACT Mem0 API
+   * Search memories using semantic similarity
    */
   async search(params: MemorySearchParams): Promise<MemorySearchResponse> {
     const { query, user_id, limit = 100, threshold } = params;
@@ -147,7 +147,7 @@ export class Memory {
   }
 
   /**
-   * Get memory by ID - EXACT Mem0 API
+   * Get memory by ID
    */
   async get(params: MemoryGetParams): Promise<MemoryEntry | null> {
     const { memory_id, user_id } = params;
@@ -182,7 +182,7 @@ export class Memory {
   }
 
   /**
-   * Get all memories - EXACT Mem0 API
+   * Get all memories for a user
    */
   async getAll(params: MemoryGetAllParams): Promise<MemoryGetAllResponse> {
     const { user_id, limit = 100 } = params;
@@ -219,7 +219,7 @@ export class Memory {
   }
 
   /**
-   * Update memory - EXACT Mem0 API
+   * Update memory content
    */
   async update(params: MemoryUpdateParams): Promise<MemoryOperationResponse> {
     const { memory_id, user_id, data } = params;
@@ -253,7 +253,7 @@ export class Memory {
   }
 
   /**
-   * Delete memory - EXACT Mem0 API
+   * Delete memory by ID
    */
   async delete(params: MemoryDeleteParams): Promise<MemoryOperationResponse> {
     const { memory_id, user_id } = params;
@@ -278,7 +278,7 @@ export class Memory {
   }
 
   /**
-   * Delete all memories - EXACT Mem0 API
+   * Delete all memories for a user
    */
   async deleteAll(params: MemoryDeleteAllParams): Promise<MemoryOperationResponse> {
     const { user_id } = params;

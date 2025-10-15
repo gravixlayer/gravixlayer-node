@@ -1,6 +1,4 @@
-/**
- * Files resource for GravixLayer SDK - OpenAI compatible File Management API
- */
+
 import FormData from 'form-data';
 import { createReadStream, statSync } from 'fs';
 import { 

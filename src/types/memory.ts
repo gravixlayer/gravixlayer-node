@@ -1,6 +1,6 @@
 /**
  * Memory types and interfaces for GravixLayer SDK
- * Provides Mem0-compatible API types
+ * Provides intelligent memory management API types
  */
 
 export enum MemoryType {

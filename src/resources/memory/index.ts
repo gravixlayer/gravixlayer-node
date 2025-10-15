@@ -1,5 +1,5 @@
 /**
- * Memory resources for GravixLayer SDK - Mem0-compatible functionality
+ * Memory resources for GravixLayer SDK - Intelligent memory management
  */
 
 export { Memory } from './memory';

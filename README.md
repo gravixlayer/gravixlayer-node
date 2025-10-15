@@ -237,7 +237,7 @@ for (const hit of searchResults.hits) {
 }
 ```
 
-### Memory Management (Mem0-Compatible)
+### Memory Management
 
 ```javascript
 import { GravixLayer } from 'gravixlayer';
@@ -362,7 +362,7 @@ gravixlayer files info file-abc123
 gravixlayer files download file-abc123 --output downloaded.pdf
 gravixlayer files delete file-abc123
 
-# Memory management (Mem0-compatible)
+# Memory management
 gravixlayer memory add user-123 --message "I prefer dark mode and TypeScript"
 gravixlayer memory search user-123 --query "programming preferences" --limit 5
 gravixlayer memory list user-123 --limit 10

@@ -969,7 +969,7 @@ vectorCmd
 // Memory command
 const memoryCmd = program
   .command('memory')
-  .description('Memory management (Mem0-compatible API)');
+  .description('Intelligent memory management');
 
 // Add memory
 memoryCmd

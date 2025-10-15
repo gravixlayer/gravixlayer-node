@@ -142,7 +142,7 @@ jobs:
           ```
           
           ## Memory System
-          The complete memory system is available with full Mem0 compatibility:
+          The complete memory system is available :
           - Add, search, update, delete memories
           - AI-powered conversation inference  
           - Semantic search with relevance scoring
