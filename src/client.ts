@@ -14,6 +14,7 @@ import { Deployments } from './resources/deployments';
 import { Accelerators } from './resources/accelerators';
 import { Files } from './resources/files';
 import { VectorDatabase } from './resources/vectors/main';
+import { Memory } from './resources/memory/memory';
 
 export interface GravixLayerOptions {
   apiKey?: string;
@@ -44,6 +45,7 @@ export class GravixLayer {
   public accelerators: Accelerators;
   public files: Files;
   public vectors: VectorDatabase;
+  public memory: Memory;
 
   constructor(options: GravixLayerOptions = {}) {
     this.apiKey = options.apiKey || process.env.GRAVIXLAYER_API_KEY || '';
@@ -75,6 +77,7 @@ export class GravixLayer {
     this.accelerators = new Accelerators(this);
     this.files = new Files(this);
     this.vectors = new VectorDatabase(this);
+    this.memory = new Memory(this);
   }
 
   async _makeRequest(
@@ -84,28 +87,52 @@ export class GravixLayer {
     stream: boolean = false,
     options: any = {}
   ): Promise<any> {
-    const url = endpoint ? `${this.baseURL.replace(/\/$/, '')}/${endpoint.replace(/^\//, '')}` : this.baseURL;
+    // Handle full URLs (for vector database endpoints)
+    let url: string;
+    if (endpoint && (endpoint.startsWith('http://') || endpoint.startsWith('https://'))) {
+      url = endpoint;
+    } else {
+      const baseUrl = this.baseURL.replace(/\/$/, '');
+      url = endpoint ? `${baseUrl}/${endpoint.replace(/^\//, '')}` : baseUrl;
+    }
+    
+    // Check if data is FormData
+    const isFormData = data && typeof data === 'object' && data.constructor && data.constructor.name === 'FormData';
     
     const headers = {
       'Authorization': `Bearer ${this.apiKey}`,
-      'Content-Type': 'application/json',
       'User-Agent': this.userAgent,
       ...this.customHeaders,
       ...options.headers,
     };
+
+    // Only set Content-Type for non-FormData requests
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
-        const response = await fetch(url, {
+        const requestOptions: any = {
           method,
           headers: headers as any,
-          body: data ? JSON.stringify(data) : undefined,
           signal: controller.signal,
           ...options,
-        } as any);
+        };
+
+        // Handle body based on data type
+        if (data) {
+          if (isFormData) {
+            requestOptions.body = data; // Use FormData directly
+          } else {
+            requestOptions.body = JSON.stringify(data); // JSON stringify for regular data
+          }
+        }
+
+        const response = await fetch(url, requestOptions);
 
         clearTimeout(timeoutId);
 

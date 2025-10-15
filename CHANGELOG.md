@@ -2,6 +2,22 @@
 
 All notable changes to the GravixLayer JavaScript SDK will be documented in this file.
 
+## [0.1.1] - 2024-12-19
+
+### Added
+- **Memory Management**: Complete Mem0-compatible memory system
+  - Add, search, get, update, and delete memories for users
+  - AI-powered memory inference and processing
+  - User-specific memory isolation using vector indexes
+  - Support for different memory types (factual, episodic, working, semantic)
+  - CLI commands for memory operations (`gravixlayer memory`)
+  - Full TypeScript type definitions for memory functionality
+
+### Enhanced
+- **Client**: Updated main client to include memory resource
+- **CLI**: Added comprehensive memory management commands
+- **Documentation**: Updated README with memory API examples and CLI usage
+
 ## [0.1.0] - 2024-12-19
 
 ### Added

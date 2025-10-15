@@ -20,40 +20,187 @@ import {
 import { GravixLayerBadRequestError } from '../../types/exceptions';
 
 export class Vectors {
-  constructor(private client: any, private indexId: string) {}
+  private baseUrl: string;
+
+  constructor(private client: any, private indexId: string) {
+    this.baseUrl = `https://api.gravixlayer.com/v1/vectors/${indexId}`;
+  }
 
   /**
-   * Upsert a vector with embedding
+   * Insert or update a vector
    */
-  async upsert(params: UpsertVectorRequest): Promise<Vector> {
-    const {
+  async upsert(
+    embedding: number[],
+    id?: string,
+    metadata?: Record<string, any>,
+    delete_protection: boolean = false
+  ): Promise<Vector> {
+    const vectorData: any = {
       embedding,
-      id,
-      metadata,
-      delete_protection = false
-    } = params;
-
-    if (!Array.isArray(embedding) || embedding.length === 0) {
-      throw new GravixLayerBadRequestError('Embedding must be a non-empty array of numbers');
-    }
-
-    if (!embedding.every(val => typeof val === 'number')) {
-      throw new GravixLayerBadRequestError('All embedding values must be numbers');
-    }
-
-    const requestData = {
-      embedding,
-      id,
-      metadata,
+      metadata: metadata || {},
       delete_protection
     };
 
-    const vectorBaseURL = this.client.baseURL.replace('/v1/inference', '/v1/vector-db');
-    
+    if (id !== undefined) {
+      vectorData.id = id;
+    }
+
+    // API expects batch format even for single operations
+    const data = {
+      vectors: [vectorData]
+    };
+
     const response = await this.client._makeRequest(
       'POST',
-      `${vectorBaseURL}/indexes/${this.indexId}/vectors`,
-      requestData
+      `${this.baseUrl}/upsert`,
+      data
+    );
+
+    const result = await response.json();
+    
+    // Handle the actual API response format
+    if (result.ids && result.ids.length > 0 && result.count > 0) {
+      // The API returns ids and count, not upserted_count
+      const vectorId = result.ids[0];
+      
+      // Wait a moment for the vector to be indexed
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      try {
+        return await this.get(vectorId);
+      } catch (error) {
+        // If we can't retrieve the vector immediately, return a minimal Vector
+        return {
+          id: vectorId,
+          embedding,
+          metadata: metadata || {},
+          delete_protection,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        } as Vector;
+      }
+    } else if (result.error) {
+      throw new Error(`Vector upsert failed: ${result.error}`);
+    } else {
+      throw new Error('Unexpected response format from upsert API');
+    }
+  }
+
+  /**
+   * Convert text to vector and store it
+   */
+  async upsertText(
+    text: string,
+    model: string,
+    id?: string,
+    metadata?: Record<string, any>,
+    delete_protection: boolean = false
+  ): Promise<TextVector> {
+    const vectorData: any = {
+      text,
+      model,
+      metadata: metadata || {},
+      delete_protection
+    };
+
+    if (id !== undefined) {
+      vectorData.id = id;
+    }
+
+    // API expects batch format even for single operations
+    const data = {
+      vectors: [vectorData]
+    };
+
+    const response = await this.client._makeRequest(
+      'POST',
+      `${this.baseUrl}/text/upsert`,
+      data
+    );
+
+    const result = await response.json();
+    
+    // Handle the actual API response format
+    if (result.ids && result.ids.length > 0 && result.count > 0) {
+      // The API returns ids and count, not upserted_count
+      const vectorId = result.ids[0];
+      
+      // Wait a moment for the vector to be indexed
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      try {
+        const vector = await this.get(vectorId);
+        return {
+          id: vector.id,
+          text,
+          model,
+          embedding: vector.embedding,
+          metadata: vector.metadata,
+          delete_protection: vector.delete_protection,
+          created_at: vector.created_at,
+          updated_at: vector.updated_at,
+          usage: result.usage || { prompt_tokens: 0, total_tokens: 0 }
+        } as TextVector;
+      } catch (error) {
+        // If we can't retrieve the vector immediately, return a minimal TextVector
+        return {
+          id: vectorId,
+          text,
+          model,
+          embedding: [], // Will be filled when vector is retrieved later
+          metadata: metadata || {},
+          delete_protection,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          usage: result.usage || { prompt_tokens: 0, total_tokens: 0 }
+        } as TextVector;
+      }
+    } else if (result.error) {
+      throw new Error(`Text vector upsert failed: ${result.error}`);
+    } else {
+      throw new Error('Unexpected response format from upsert API');
+    }
+  }
+
+  /**
+   * Insert or update multiple vectors in a single operation
+   */
+  async batchUpsert(vectors: Record<string, any>[]): Promise<BatchUpsertResponse> {
+    const data = { vectors };
+
+    const response = await this.client._makeRequest(
+      'POST',
+      `${this.baseUrl}/batch`,
+      data
+    );
+
+    const result = await response.json();
+    return result as BatchUpsertResponse;
+  }
+
+  /**
+   * Convert multiple texts to vectors and store them
+   */
+  async batchUpsertText(vectors: Record<string, any>[]): Promise<BatchUpsertResponse> {
+    const data = { vectors };
+
+    const response = await this.client._makeRequest(
+      'POST',
+      `${this.baseUrl}/text/batch`,
+      data
+    );
+
+    const result = await response.json();
+    return result as BatchUpsertResponse;
+  }
+
+  /**
+   * Retrieve a specific vector by ID
+   */
+  async get(vectorId: string): Promise<Vector> {
+    const response = await this.client._makeRequest(
+      'GET',
+      `${this.baseUrl}/${vectorId}`
     );
 
     const result = await response.json();
@@ -61,201 +208,78 @@ export class Vectors {
   }
 
   /**
-   * Upsert a vector from text (automatic embedding)
+   * Update vector metadata and delete protection settings
    */
-  async upsertText(params: UpsertTextVectorRequest): Promise<TextVector> {
-    const {
-      text,
-      model,
-      id,
-      metadata,
-      delete_protection = false
-    } = params;
-
-    if (!text || typeof text !== 'string') {
-      throw new GravixLayerBadRequestError('Text must be a non-empty string');
+  async update(
+    vectorId: string,
+    metadata?: Record<string, any>,
+    delete_protection?: boolean
+  ): Promise<Vector> {
+    const data: any = {};
+    if (metadata !== undefined) {
+      data.metadata = metadata;
+    }
+    if (delete_protection !== undefined) {
+      data.delete_protection = delete_protection;
     }
 
-    if (!model || typeof model !== 'string') {
-      throw new GravixLayerBadRequestError('Model must be specified');
+    if (Object.keys(data).length === 0) {
+      throw new Error('At least one field must be provided for update');
     }
 
-    const requestData = {
-      text,
-      model,
-      id,
-      metadata,
-      delete_protection
-    };
-
-    const vectorBaseURL = this.client.baseURL.replace('/v1/inference', '/v1/vector-db');
-    
     const response = await this.client._makeRequest(
-      'POST',
-      `${vectorBaseURL}/indexes/${this.indexId}/vectors/text`,
-      requestData
+      'PUT',
+      `${this.baseUrl}/${vectorId}`,
+      data
     );
 
     const result = await response.json();
-    return result as TextVector;
+
+    // If the update response doesn't include all fields, fetch the complete vector
+    if (!result.embedding) {
+      return this.get(vectorId);
+    }
+
+    return result as Vector;
   }
 
   /**
-   * Batch upsert vectors
+   * Delete a specific vector using batch delete endpoint
    */
-  async batchUpsert(params: BatchUpsertRequest): Promise<BatchUpsertResponse> {
-    const { vectors } = params;
+  async delete(vectorId: string): Promise<void> {
+    await this.client._makeRequest(
+      'POST',
+      `${this.baseUrl}/delete`,
+      { vector_ids: [vectorId] }
+    );
+  }
 
-    if (!Array.isArray(vectors) || vectors.length === 0) {
-      throw new GravixLayerBadRequestError('Vectors array must be non-empty');
+  /**
+   * Delete multiple vectors in a single operation
+   */
+  async batchDelete(vectorIds: string[]): Promise<Record<string, any>> {
+    if (!vectorIds || vectorIds.length === 0) {
+      throw new Error('At least one vector ID must be provided');
     }
 
-    // Validate each vector
-    for (const vector of vectors) {
-      if (!Array.isArray(vector.embedding) || vector.embedding.length === 0) {
-        throw new GravixLayerBadRequestError('Each vector must have a non-empty embedding array');
-      }
-    }
+    const data = { vector_ids: vectorIds };
 
-    const vectorBaseURL = this.client.baseURL.replace('/v1/inference', '/v1/vector-db');
-    
     const response = await this.client._makeRequest(
       'POST',
-      `${vectorBaseURL}/indexes/${this.indexId}/vectors/batch`,
-      params
+      `${this.baseUrl}/delete`,
+      data
     );
 
-    const result = await response.json();
-    return result as BatchUpsertResponse;
+    return response.json();
   }
 
   /**
-   * Batch upsert text vectors
+   * Retrieve a list of vector IDs in the index
    */
-  async batchUpsertText(params: BatchUpsertTextRequest): Promise<BatchUpsertResponse> {
-    const { vectors } = params;
-
-    if (!Array.isArray(vectors) || vectors.length === 0) {
-      throw new GravixLayerBadRequestError('Vectors array must be non-empty');
-    }
-
-    // Validate each text vector
-    for (const vector of vectors) {
-      if (!vector.text || typeof vector.text !== 'string') {
-        throw new GravixLayerBadRequestError('Each vector must have non-empty text');
-      }
-      if (!vector.model || typeof vector.model !== 'string') {
-        throw new GravixLayerBadRequestError('Each vector must specify a model');
-      }
-    }
-
-    const vectorBaseURL = this.client.baseURL.replace('/v1/inference', '/v1/vector-db');
-    
-    const response = await this.client._makeRequest(
-      'POST',
-      `${vectorBaseURL}/indexes/${this.indexId}/vectors/batch-text`,
-      params
-    );
-
-    const result = await response.json();
-    return result as BatchUpsertResponse;
-  }
-
-  /**
-   * Search vectors by similarity
-   */
-  async search(params: VectorSearchRequest): Promise<VectorSearchResponse> {
-    const {
-      vector,
-      top_k,
-      filter,
-      include_metadata = true,
-      include_values = true
-    } = params;
-
-    if (!Array.isArray(vector) || vector.length === 0) {
-      throw new GravixLayerBadRequestError('Query vector must be a non-empty array of numbers');
-    }
-
-    if (!Number.isInteger(top_k) || top_k <= 0) {
-      throw new GravixLayerBadRequestError('top_k must be a positive integer');
-    }
-
-    const requestData = {
-      vector,
-      top_k,
-      filter,
-      include_metadata,
-      include_values
-    };
-
-    const vectorBaseURL = this.client.baseURL.replace('/v1/inference', '/v1/vector-db');
-    
-    const response = await this.client._makeRequest(
-      'POST',
-      `${vectorBaseURL}/indexes/${this.indexId}/search`,
-      requestData
-    );
-
-    const result = await response.json();
-    return result as VectorSearchResponse;
-  }
-
-  /**
-   * Search vectors using text query
-   */
-  async searchText(params: TextSearchRequest): Promise<TextSearchResponse> {
-    const {
-      query,
-      model,
-      top_k,
-      filter,
-      include_metadata = true,
-      include_values = true
-    } = params;
-
-    if (!query || typeof query !== 'string') {
-      throw new GravixLayerBadRequestError('Query must be a non-empty string');
-    }
-
-    if (!model || typeof model !== 'string') {
-      throw new GravixLayerBadRequestError('Model must be specified');
-    }
-
-    if (!Number.isInteger(top_k) || top_k <= 0) {
-      throw new GravixLayerBadRequestError('top_k must be a positive integer');
-    }
-
-    const requestData = {
-      query,
-      model,
-      top_k,
-      filter,
-      include_metadata,
-      include_values
-    };
-
-    const vectorBaseURL = this.client.baseURL.replace('/v1/inference', '/v1/vector-db');
-    
-    const response = await this.client._makeRequest(
-      'POST',
-      `${vectorBaseURL}/indexes/${this.indexId}/search/text`,
-      requestData
-    );
-
-    const result = await response.json();
-    return result as TextSearchResponse;
-  }
-
-  /**
-   * List vectors in the index
-   */
-  async list(): Promise<VectorListResponse> {
-    const vectorBaseURL = this.client.baseURL.replace('/v1/inference', '/v1/vector-db');
-    
+  async listIds(): Promise<VectorListResponse> {
     const response = await this.client._makeRequest(
       'GET',
-      `${vectorBaseURL}/indexes/${this.indexId}/vectors`
+      `${this.baseUrl}/list`
     );
 
     const result = await response.json();
@@ -263,80 +287,124 @@ export class Vectors {
   }
 
   /**
-   * Get vectors with full data
+   * Retrieve vectors in the index with optional filtering
    */
-  async getVectors(vectorIds: string[]): Promise<VectorDictResponse> {
-    if (!Array.isArray(vectorIds) || vectorIds.length === 0) {
-      throw new GravixLayerBadRequestError('Vector IDs array must be non-empty');
+  async list(vectorIds?: string[]): Promise<VectorDictResponse> {
+    const params: any = {};
+    if (vectorIds) {
+      params.vector_ids = vectorIds.join(',');
     }
 
-    const vectorBaseURL = this.client.baseURL.replace('/v1/inference', '/v1/vector-db');
-    
-    const response = await this.client._makeRequest(
-      'POST',
-      `${vectorBaseURL}/indexes/${this.indexId}/vectors/get`,
-      { ids: vectorIds }
-    );
-
-    const result = await response.json();
-    return result as VectorDictResponse;
-  }
-
-  /**
-   * Get a specific vector by ID
-   */
-  async get(vectorId: string): Promise<Vector> {
-    if (!vectorId) {
-      throw new GravixLayerBadRequestError('Vector ID is required');
-    }
-
-    const vectorBaseURL = this.client.baseURL.replace('/v1/inference', '/v1/vector-db');
-    
     const response = await this.client._makeRequest(
       'GET',
-      `${vectorBaseURL}/indexes/${this.indexId}/vectors/${vectorId}`
+      `${this.baseUrl}/fetch`,
+      Object.keys(params).length > 0 ? params : undefined
     );
 
     const result = await response.json();
-    return result as Vector;
+
+    // Convert vector data to Vector objects
+    // API now returns vectors as an array, not a dictionary
+    const vectors: Record<string, Vector> = {};
+    if (Array.isArray(result.vectors)) {
+      // New API format: array of vectors
+      for (const vectorData of result.vectors) {
+        // Ensure all required fields are present with defaults
+        vectorData.delete_protection = vectorData.delete_protection || false;
+        vectorData.created_at = vectorData.created_at || '';
+        vectorData.updated_at = vectorData.updated_at || '';
+        vectors[vectorData.id] = vectorData as Vector;
+      }
+    } else {
+      // Old API format: dictionary of vectors (fallback)
+      for (const [vectorId, vectorData] of Object.entries(result.vectors)) {
+        // Ensure all required fields are present with defaults
+        (vectorData as any).delete_protection = (vectorData as any).delete_protection || false;
+        (vectorData as any).created_at = (vectorData as any).created_at || '';
+        (vectorData as any).updated_at = (vectorData as any).updated_at || '';
+        vectors[vectorId] = vectorData as Vector;
+      }
+    }
+
+    return { vectors } as VectorDictResponse;
   }
 
   /**
-   * Update a vector
+   * Perform similarity search using a vector query
    */
-  async update(vectorId: string, params: UpdateVectorRequest): Promise<Vector> {
-    if (!vectorId) {
-      throw new GravixLayerBadRequestError('Vector ID is required');
+  async search(
+    vector: number[],
+    top_k: number,
+    filter?: Record<string, any>,
+    include_metadata: boolean = true,
+    include_values: boolean = true
+  ): Promise<VectorSearchResponse> {
+    if (!(top_k >= 1 && top_k <= 1000)) {
+      throw new Error('top_k must be between 1 and 1000');
     }
 
-    const vectorBaseURL = this.client.baseURL.replace('/v1/inference', '/v1/vector-db');
-    
+    const data: any = {
+      vector,
+      top_k,
+      include_metadata,
+      include_values
+    };
+
+    if (filter !== undefined) {
+      data.filter = filter;
+    }
+
     const response = await this.client._makeRequest(
-      'PATCH',
-      `${vectorBaseURL}/indexes/${this.indexId}/vectors/${vectorId}`,
-      params
+      'POST',
+      `${this.baseUrl}/search`,
+      data
     );
 
     const result = await response.json();
-    return result as Vector;
+    return {
+      hits: result.hits,
+      query_time_ms: result.query_time_ms
+    } as VectorSearchResponse;
   }
 
   /**
-   * Delete a vector
+   * Perform similarity search using text that gets converted to a vector
    */
-  async delete(vectorId: string): Promise<{ message: string }> {
-    if (!vectorId) {
-      throw new GravixLayerBadRequestError('Vector ID is required');
+  async searchText(
+    query: string,
+    model: string,
+    top_k: number,
+    filter?: Record<string, any>,
+    include_metadata: boolean = true,
+    include_values: boolean = true
+  ): Promise<TextSearchResponse> {
+    if (!(top_k >= 1 && top_k <= 1000)) {
+      throw new Error('top_k must be between 1 and 1000');
     }
 
-    const vectorBaseURL = this.client.baseURL.replace('/v1/inference', '/v1/vector-db');
-    
+    const data: any = {
+      query,
+      model,
+      top_k,
+      include_metadata,
+      include_values
+    };
+
+    if (filter !== undefined) {
+      data.filter = filter;
+    }
+
     const response = await this.client._makeRequest(
-      'DELETE',
-      `${vectorBaseURL}/indexes/${this.indexId}/vectors/${vectorId}`
+      'POST',
+      `${this.baseUrl}/search/text`,
+      data
     );
 
     const result = await response.json();
-    return result;
+    return {
+      hits: result.hits,
+      query_time_ms: result.query_time_ms,
+      usage: result.usage
+    } as TextSearchResponse;
   }
 }

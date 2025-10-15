@@ -83,6 +83,25 @@ export type {
   SupportedIndexType,
 } from './types/vectors';
 
+// Memory types
+export type {
+  MemoryType,
+  MemoryEntry,
+  MemorySearchResult,
+  MemoryStats,
+  MemoryAddParams,
+  MemorySearchParams,
+  MemoryGetParams,
+  MemoryGetAllParams,
+  MemoryUpdateParams,
+  MemoryDeleteParams,
+  MemoryDeleteAllParams,
+  MemoryResponse,
+  MemorySearchResponse,
+  MemoryGetAllResponse,
+  MemoryOperationResponse,
+} from './types/memory';
+
 // Exception types
 export {
   GravixLayerError,

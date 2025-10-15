@@ -11,7 +11,7 @@ import {
   FileCreateParams,
   FILE_PURPOSES 
 } from '../types/files';
-import { GravixLayerBadRequestError } from '../types/exceptions';
+import { GravixLayerBadRequestError, GravixLayerAuthenticationError } from '../types/exceptions';
 
 export class Files {
   constructor(private client: any) {}
@@ -21,6 +21,15 @@ export class Files {
    */
   async create(params: FileCreateParams): Promise<FileUploadResponse> {
     const { file, purpose, expires_after, filename } = params;
+
+    // Validate required parameters
+    if (!file) {
+      throw new GravixLayerBadRequestError('file is required');
+    }
+
+    if (!purpose) {
+      throw new GravixLayerBadRequestError('purpose is required');
+    }
 
     // Validate purpose
     if (!FILE_PURPOSES.includes(purpose)) {
@@ -83,21 +92,15 @@ export class Files {
       const response = await this.client._makeRequest(
         'POST',
         '',
-        null,
-        false,
-        {
-          body: formData,
-          headers: {
-            ...formData.getHeaders(),
-          }
-        }
+        formData,
+        false
       );
 
-      const result = await response.json();
+      const result = await response.json() as any;
       return {
-        message: result.message || '',
-        file_name: result.file_name || '',
-        purpose: result.purpose || ''
+        message: result.message || 'file uploaded',
+        file_name: result.file_name || result.filename || '',
+        purpose: result.purpose || purpose
       };
     } finally {
       this.client.baseURL = originalBaseURL;
@@ -176,22 +179,38 @@ export class Files {
       throw new GravixLayerBadRequestError('file ID required');
     }
 
-    const filesBaseURL = this.client.baseURL.replace('/v1/inference', '/v1/files');
-    
-    const response = await this.client._makeRequest(
-      'GET', 
-      `${filesBaseURL}/${fileId}/content`,
-      null,
-      false,
-      { 
-        headers: {
-          'Authorization': `Bearer ${this.client.apiKey}`,
-          'User-Agent': this.client.userAgent
+    const originalBaseURL = this.client.baseURL;
+    this.client.baseURL = this.client.baseURL.replace('/v1/inference', '/v1/files');
+
+    try {
+      const response = await this.client._makeRequest('GET', `${fileId}/content`);
+      
+      if (!response.ok) {
+        let errorMessage = 'Failed to download file content';
+        
+        try {
+          const errorText = await response.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        } catch (parseError) {
+          // If we can't parse the error, use the status
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        
+        if (response.status === 404) {
+          throw new GravixLayerBadRequestError('file not found');
+        } else if (response.status === 500) {
+          throw new GravixLayerBadRequestError('storage error');
+        } else {
+          throw new GravixLayerBadRequestError(errorMessage);
         }
       }
-    );
 
-    return Buffer.from(await response.arrayBuffer());
+      return Buffer.from(await response.arrayBuffer());
+    } finally {
+      this.client.baseURL = originalBaseURL;
+    }
   }
 
   /**

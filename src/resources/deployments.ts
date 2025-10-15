@@ -8,8 +8,10 @@ export class Deployments {
     const data = {
       deployment_name: params.deployment_name,
       hw_type: params.hw_type || 'dedicated',
-      hardware: params.hardware,
+      gpu_model: params.gpu_model,
+      gpu_count: params.gpu_count || 1,
       min_replicas: params.min_replicas || 1,
+      max_replicas: params.max_replicas || 1,
       model_name: params.model_name
     };
 

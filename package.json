@@ -1,6 +1,6 @@
 {
   "name": "gravixlayer",
-  "version": "0.1.1",
+  "version": "0.0.4",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -39,7 +39,10 @@
     "release:patch": "node scripts/patch-release.js",
     "release": "node scripts/patch-release.js",
     "release:minor": "npm version minor && git push origin main --tags",
-    "release:major": "npm version major && git push origin main --tags"
+    "release:major": "npm version major && git push origin main --tags",
+    "reset-version": "node scripts/reset-version.js",
+    "create-release": "node scripts/create-github-release.js",
+    "publish:manual": "node scripts/manual-publish.js"
   },
   "keywords": [
     "gravixlayer",
@@ -60,6 +63,7 @@
   "dependencies": {
     "commander": "^11.0.0",
     "form-data": "^4.0.0",
+    "gravixlayer": "^0.1.1",
     "node-fetch": "^3.3.2"
   },
   "devDependencies": {

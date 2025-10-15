@@ -19,8 +19,10 @@ interface DeploymentCreateOptions {
   apiKey?: string;
   deploymentName: string;
   hwType: string;
-  hardware: string;
+  gpuModel: string;
+  gpuCount: number;
   minReplicas: number;
+  maxReplicas: number;
   modelName: string;
   autoRetry?: boolean;
   wait?: boolean;
@@ -195,7 +197,7 @@ async function waitForDeploymentReady(client: GravixLayer, deploymentId: string,
           console.log(`Deployment Name: ${currentDeployment.deployment_name}`);
           console.log(`Status: ${currentDeployment.status}`);
           console.log(`Model: ${currentDeployment.model_name}`);
-          console.log(`Hardware: ${currentDeployment.hardware}`);
+          console.log(`GPU Model: ${currentDeployment.gpu_model}`);
           return true;
         } else if (['failed', 'error', 'stopped'].includes(status)) {
           console.log();
@@ -251,8 +253,10 @@ async function handleDeploymentCreate(deploymentName: string, options: Deploymen
     const response = await client.deployments.create({
       deployment_name: finalDeploymentName,
       model_name: options.modelName,
-      hardware: options.hardware,
+      gpu_model: options.gpuModel,
+      gpu_count: options.gpuCount,
       min_replicas: options.minReplicas,
+      max_replicas: options.maxReplicas,
       hw_type: options.hwType
     });
 
@@ -261,7 +265,7 @@ async function handleDeploymentCreate(deploymentName: string, options: Deploymen
     console.log(`Deployment Name: ${finalDeploymentName}`);
     console.log(`Status: ${response.status}`);
     console.log(`Model: ${options.modelName}`);
-    console.log(`Hardware: ${options.hardware}`);
+    console.log(`GPU Model: ${options.gpuModel}`);
 
     if (options.wait) {
       await waitForDeploymentReady(client, response.deployment_id, finalDeploymentName);
@@ -303,7 +307,7 @@ async function handleDeploymentCreate(deploymentName: string, options: Deploymen
               } else {
                 console.log(`❌ Deployment creation failed: ${errorMessage}`);
                 if (!options.autoRetry) {
-                  console.log(`Try with --auto-retry flag: gravixlayer deployments create --deployment-name "${deploymentName}" --hardware "${options.hardware}" --model-name "${options.modelName}" --auto-retry`);
+                  console.log(`Try with --auto-retry flag: gravixlayer deployments create --deployment-name "${deploymentName}" --gpu-model "${options.gpuModel}" --model-name "${options.modelName}" --auto-retry`);
                 }
               }
             } catch {
@@ -343,7 +347,7 @@ async function handleDeploymentList(options: DeploymentListOptions) {
           console.log(`Deployment Name: ${deployment.deployment_name}`);
           console.log(`Model: ${deployment.model_name}`);
           console.log(`Status: ${deployment.status}`);
-          console.log(`Hardware: ${deployment.hardware}`);
+          console.log(`GPU Model: ${deployment.gpu_model}`);
           console.log(`Replicas: ${deployment.min_replicas}`);
           console.log(`Created: ${deployment.created_at}`);
           console.log();
@@ -739,8 +743,10 @@ deploymentsCmd
   .option('--api-key <key>', 'API key')
   .requiredOption('--deployment-name <name>', 'Deployment name')
   .option('--hw-type <type>', 'Hardware type', 'dedicated')
-  .requiredOption('--hardware <hardware>', 'Hardware specification')
+  .requiredOption('--gpu-model <model>', 'GPU model specification (e.g., NVIDIA_T4_16GB)')
+  .option('--gpu-count <count>', 'Number of GPUs', parseInt, 1)
   .option('--min-replicas <replicas>', 'Minimum replicas', parseInt, 1)
+  .option('--max-replicas <replicas>', 'Maximum replicas', parseInt, 1)
   .requiredOption('--model-name <model>', 'Model name to deploy')
   .option('--auto-retry', 'Auto-retry with unique name if deployment name exists')
   .option('--wait', 'Wait for deployment to be ready before exiting')
@@ -960,25 +966,247 @@ vectorCmd
     }
   });
 
-// For backward compatibility, add top-level options
-program
+// Memory command
+const memoryCmd = program
+  .command('memory')
+  .description('Memory management (Mem0-compatible API)');
+
+// Add memory
+memoryCmd
+  .command('add <userId>')
+  .description('Add a memory for a user')
   .option('--api-key <key>', 'API key')
-  .option('--model <model>', 'Model name')
-  .option('--system <prompt>', 'System prompt (optional)')
-  .option('--user <message>', 'User prompt/message')
-  .option('--prompt <prompt>', 'Direct prompt')
-  .option('--temperature <temp>', 'Temperature', parseFloat)
-  .option('--max-tokens <tokens>', 'Maximum tokens to generate', parseInt)
-  .option('--stream', 'Stream output')
-  .option('--mode <mode>', 'API mode', 'chat');
+  .requiredOption('--message <message>', 'Message content to remember')
+  .option('--metadata <metadata>', 'Memory metadata as JSON string')
+  .option('--no-infer', 'Disable AI inference for memory processing')
+  .action(async (userId, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
 
-// Handle top-level execution (backward compatibility)
-program.action((options) => {
-  if (options.model) {
-    handleChatCommands(options);
-  } else {
-    program.help();
-  }
-});
+    try {
+      console.log(`Adding memory for user '${userId}'...`);
+      
+      const metadata = options.metadata ? JSON.parse(options.metadata) : undefined;
+      
+      const result = await client.memory.add({
+        messages: options.message,
+        user_id: userId,
+        metadata,
+        infer: options.infer !== false
+      });
 
+      console.log('✅ Memory added successfully!');
+      console.log(`Added ${result.results.length} memory(ies):`);
+      for (const memory of result.results) {
+        console.log(`- ID: ${memory.id}`);
+        console.log(`  Content: ${memory.memory}`);
+        console.log(`  Event: ${memory.event}`);
+      }
+    } catch (error) {
+      console.error(`❌ Error adding memory: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Search memories
+memoryCmd
+  .command('search <userId>')
+  .description('Search memories for a user')
+  .option('--api-key <key>', 'API key')
+  .requiredOption('--query <query>', 'Search query')
+  .option('--limit <limit>', 'Maximum number of results', parseInt, 10)
+  .option('--threshold <threshold>', 'Minimum similarity threshold', parseFloat)
+  .action(async (userId, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      console.log(`Searching memories for user '${userId}' with query: "${options.query}"`);
+      
+      const result = await client.memory.search({
+        query: options.query,
+        user_id: userId,
+        limit: options.limit,
+        threshold: options.threshold
+      });
+
+      console.log(`✅ Found ${result.results.length} memory(ies):`);
+      console.log();
+      for (const item of result.results) {
+        console.log(`ID: ${item.memory.id}`);
+        console.log(`Content: ${item.memory.content}`);
+        console.log(`Relevance Score: ${item.relevance_score.toFixed(3)}`);
+        console.log(`Created: ${item.memory.created_at}`);
+        console.log('---');
+      }
+    } catch (error) {
+      console.error(`❌ Error searching memories: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Get all memories
+memoryCmd
+  .command('list <userId>')
+  .description('List all memories for a user')
+  .option('--api-key <key>', 'API key')
+  .option('--limit <limit>', 'Maximum number of results', parseInt, 100)
+  .option('--json', 'Output as JSON')
+  .action(async (userId, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      console.log(`Listing memories for user '${userId}'...`);
+      
+      const result = await client.memory.getAll({
+        user_id: userId,
+        limit: options.limit
+      });
+
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(`✅ Found ${result.results.length} memory(ies):`);
+        console.log();
+        for (const memory of result.results) {
+          console.log(`ID: ${memory.id}`);
+          console.log(`Content: ${memory.content}`);
+          console.log(`Type: ${memory.memory_type}`);
+          console.log(`Created: ${memory.created_at}`);
+          console.log('---');
+        }
+      }
+    } catch (error) {
+      console.error(`❌ Error listing memories: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Get specific memory
+memoryCmd
+  .command('get <userId> <memoryId>')
+  .description('Get a specific memory by ID')
+  .option('--api-key <key>', 'API key')
+  .action(async (userId, memoryId, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      console.log(`Getting memory '${memoryId}' for user '${userId}'...`);
+      
+      const memory = await client.memory.get({
+        memory_id: memoryId,
+        user_id: userId
+      });
+
+      if (memory) {
+        console.log('✅ Memory found:');
+        console.log(`ID: ${memory.id}`);
+        console.log(`Content: ${memory.content}`);
+        console.log(`Type: ${memory.memory_type}`);
+        console.log(`Created: ${memory.created_at}`);
+        console.log(`Updated: ${memory.updated_at}`);
+        console.log(`Importance Score: ${memory.importance_score}`);
+        console.log(`Access Count: ${memory.access_count}`);
+      } else {
+        console.log('❌ Memory not found');
+      }
+    } catch (error) {
+      console.error(`❌ Error getting memory: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Update memory
+memoryCmd
+  .command('update <userId> <memoryId>')
+  .description('Update a memory')
+  .option('--api-key <key>', 'API key')
+  .requiredOption('--data <data>', 'New memory content')
+  .action(async (userId, memoryId, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      console.log(`Updating memory '${memoryId}' for user '${userId}'...`);
+      
+      const result = await client.memory.update({
+        memory_id: memoryId,
+        user_id: userId,
+        data: options.data
+      });
+
+      console.log('✅ Memory updated successfully!');
+      console.log(`Message: ${result.message}`);
+    } catch (error) {
+      console.error(`❌ Error updating memory: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Delete memory
+memoryCmd
+  .command('delete <userId> <memoryId>')
+  .description('Delete a specific memory')
+  .option('--api-key <key>', 'API key')
+  .action(async (userId, memoryId, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      console.log(`Deleting memory '${memoryId}' for user '${userId}'...`);
+      
+      const result = await client.memory.delete({
+        memory_id: memoryId,
+        user_id: userId
+      });
+
+      console.log('✅ Memory deleted successfully!');
+      console.log(`Message: ${result.message}`);
+    } catch (error) {
+      console.error(`❌ Error deleting memory: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Delete all memories
+memoryCmd
+  .command('delete-all <userId>')
+  .description('Delete all memories for a user')
+  .option('--api-key <key>', 'API key')
+  .option('--confirm', 'Skip confirmation prompt')
+  .action(async (userId, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      if (!options.confirm) {
+        console.log(`⚠️  This will delete ALL memories for user '${userId}'. This action cannot be undone.`);
+        console.log('Use --confirm flag to proceed without this warning.');
+        process.exit(1);
+      }
+
+      console.log(`Deleting all memories for user '${userId}'...`);
+      
+      const result = await client.memory.deleteAll({
+        user_id: userId
+      });
+
+      console.log('✅ All memories deleted successfully!');
+      console.log(`Message: ${result.message}`);
+    } catch (error) {
+      console.error(`❌ Error deleting all memories: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Parse command line arguments
 program.parse();

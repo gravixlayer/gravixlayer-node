@@ -30,6 +30,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -49,15 +50,28 @@ jobs:
     - name: Run post-build tests
       run: npm run test:unit
 
+    - name: Check NPM Token
+      run: |
+        if [ -z "${{ secrets.NPM_TOKEN }}" ]; then
+          echo "❌ NPM_TOKEN secret is not set!"
+          echo "Please add NPM_TOKEN to repository secrets"
+          exit 1
+        else
+          echo "✅ NPM_TOKEN is configured"
+        fi
+
     - name: Bump version and get new version
       id: version
       run: |
-        echo "Current version: $(node -p "require('./package.json').version")"
+        CURRENT_VERSION=$(node -p "require('./package.json').version")
+        echo "Current version: $CURRENT_VERSION"
         echo "Bumping ${{ github.event.inputs.version_type }} version..."
         npm version ${{ github.event.inputs.version_type }} --no-git-tag-version
         NEW_VERSION=$(node -p "require('./package.json').version")
         echo "New version: $NEW_VERSION"
         echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+        echo "✅ Version bumped from $CURRENT_VERSION to $NEW_VERSION"
 
     - name: Prepare release notes
       id: release_notes
@@ -66,30 +80,50 @@ jobs:
           RELEASE_NOTES="${{ github.event.inputs.release_notes }}"
         else
           COMMIT_MSG="$(git log -1 --pretty=%B)"
-          RELEASE_NOTES=$(echo "$COMMIT_MSG" | sed 's/^[a-z]*: *//' | sed 's/^[A-Z]/\L&/')
+          RELEASE_NOTES="Release v${{ env.NEW_VERSION }} - $COMMIT_MSG"
         fi
         echo "Release notes: $RELEASE_NOTES"
+        echo "FINAL_RELEASE_NOTES=$RELEASE_NOTES" >> $GITHUB_ENV
         {
           echo 'notes<<EOF'
           echo "$RELEASE_NOTES"
           echo EOF
         } >> $GITHUB_OUTPUT
 
+    - name: Commit version bump
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add package.json
+        git commit -m "chore: bump version to ${{ env.NEW_VERSION }}"
+
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: v${{ steps.version.outputs.version }}
-        name: "Release v${{ steps.version.outputs.version }}"
-        body: ${{ steps.release_notes.outputs.notes }}
+        tag_name: v${{ env.NEW_VERSION }}
+        name: "Release v${{ env.NEW_VERSION }}"
+        body: ${{ env.FINAL_RELEASE_NOTES }}
         draft: false
         prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Test NPM Authentication
+      run: |
+        echo "Testing NPM authentication..."
+        npm whoami
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
     - name: Publish to npm
       run: |
-        echo "Publishing gravixlayer@${{ steps.version.outputs.version }} to NPM..."
+        echo "Publishing gravixlayer@${{ env.NEW_VERSION }} to NPM..."
         npm publish --access public
         echo "✅ Successfully published to NPM!"
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+    - name: Push version bump
+      run: |
+        git push origin main
+        git push origin v${{ env.NEW_VERSION }}

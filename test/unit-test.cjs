@@ -194,7 +194,7 @@ class UnitTester {
     // Test vector methods exist
     const vectorMethods = [
       'upsert', 'upsertText', 'batchUpsert', 'batchUpsertText',
-      'search', 'searchText', 'list', 'getVectors', 'get', 'update', 'delete'
+      'search', 'searchText', 'list', 'listIds', 'get', 'update', 'delete'
     ];
 
     for (const method of vectorMethods) {

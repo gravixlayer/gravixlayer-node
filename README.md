@@ -237,6 +237,61 @@ for (const hit of searchResults.hits) {
 }
 ```
 
+### Memory Management (Mem0-Compatible)
+
+```javascript
+import { GravixLayer } from 'gravixlayer';
+
+const client = new GravixLayer({
+  apiKey: process.env.GRAVIXLAYER_API_KEY,
+});
+
+// Add memories for a user
+const addResult = await client.memory.add({
+  messages: "I prefer dark mode and use TypeScript for all my projects",
+  user_id: "user-123",
+  metadata: { category: "preferences" },
+  infer: true // Use AI to process and extract key information
+});
+
+// Search memories
+const searchResult = await client.memory.search({
+  query: "programming preferences",
+  user_id: "user-123",
+  limit: 10
+});
+
+// Get all memories for a user
+const allMemories = await client.memory.getAll({
+  user_id: "user-123",
+  limit: 100
+});
+
+// Get specific memory
+const memory = await client.memory.get({
+  memory_id: "memory-abc123",
+  user_id: "user-123"
+});
+
+// Update memory
+await client.memory.update({
+  memory_id: "memory-abc123",
+  user_id: "user-123",
+  data: "Updated preference: I prefer dark mode and use TypeScript and React"
+});
+
+// Delete memory
+await client.memory.delete({
+  memory_id: "memory-abc123",
+  user_id: "user-123"
+});
+
+// Delete all memories for a user
+await client.memory.deleteAll({
+  user_id: "user-123"
+});
+```
+
 ### Deployments
 
 ```javascript
@@ -295,7 +350,7 @@ gravixlayer chat --model "meta-llama/llama-3.1-8b-instruct" --user "Hello!" --st
 gravixlayer deployments list
 
 # Create deployment
-gravixlayer deployments create --deployment-name "my-deployment" --model-name "meta-llama/llama-3.1-8b-instruct" --hardware "nvidia-t4-16gb-pcie_1"
+gravixlayer deployments create --deployment-name "my-deployment" --model-name "meta-llama/llama-3.1-8b-instruct" --gpu-model "NVIDIA_T4_16GB"
 
 # List available hardware
 gravixlayer deployments hardware --list
@@ -306,6 +361,15 @@ gravixlayer files list
 gravixlayer files info file-abc123
 gravixlayer files download file-abc123 --output downloaded.pdf
 gravixlayer files delete file-abc123
+
+# Memory management (Mem0-compatible)
+gravixlayer memory add user-123 --message "I prefer dark mode and TypeScript"
+gravixlayer memory search user-123 --query "programming preferences" --limit 5
+gravixlayer memory list user-123 --limit 10
+gravixlayer memory get user-123 memory-abc123
+gravixlayer memory update user-123 memory-abc123 --data "Updated preference"
+gravixlayer memory delete user-123 memory-abc123
+gravixlayer memory delete-all user-123 --confirm
 
 # Vector database
 gravixlayer vectors index create --name "embeddings" --dimension 1536 --metric cosine

@@ -1,9 +1,11 @@
 export interface DeploymentCreate {
   deployment_name: string;
-  hw_type?: string;
-  hardware: string;
-  min_replicas?: number;
   model_name: string;
+  gpu_model: string;
+  gpu_count?: number;
+  min_replicas?: number;
+  max_replicas?: number;
+  hw_type?: string;
 }
 
 export interface Deployment {
@@ -13,8 +15,10 @@ export interface Deployment {
   deployment_name: string;
   status: string;
   created_at: string;
-  hardware: string;
+  gpu_model: string;
+  gpu_count: number;
   min_replicas: number;
+  max_replicas?: number;
   hw_type: string;
 }
 

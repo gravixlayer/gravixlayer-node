@@ -9,6 +9,9 @@ export interface VectorIndex {
   delete_protection: boolean;
   dimension: number;
   metric: string;
+  cloud_provider?: string;
+  region?: string;
+  index_type?: string;
   created_at: string;
   metadata?: Record<string, any>;
   updated_at?: string;
@@ -80,6 +83,9 @@ export interface CreateIndexRequest {
   dimension: number;
   metric: string;
   vector_type?: string;
+  cloud_provider?: string;
+  region?: string;
+  index_type?: string;
   metadata?: Record<string, any>;
   delete_protection?: boolean;
 }
@@ -137,8 +143,12 @@ export interface UpdateVectorRequest {
 // Supported metrics and vector types
 export const SUPPORTED_METRICS = ['cosine', 'euclidean', 'dot_product'] as const;
 export const SUPPORTED_VECTOR_TYPES = ['dense'] as const;
-export const SUPPORTED_INDEX_TYPES = ['hnsw', 'ivfflat'] as const;
+export const SUPPORTED_INDEX_TYPES = ['serverless', 'dedicated'] as const;
+export const SUPPORTED_CLOUD_PROVIDERS = ['AWS', 'GCP', 'Azure', 'Gravix'] as const;
+export const SUPPORTED_REGIONS = ['us-east-1', 'us-west-2', 'eu-west-1', 'us-central1', 'eastus', 'gl-eu-west1'] as const;
 
 export type SupportedMetric = typeof SUPPORTED_METRICS[number];
 export type SupportedVectorType = typeof SUPPORTED_VECTOR_TYPES[number];
 export type SupportedIndexType = typeof SUPPORTED_INDEX_TYPES[number];
+export type SupportedCloudProvider = typeof SUPPORTED_CLOUD_PROVIDERS[number];
+export type SupportedRegion = typeof SUPPORTED_REGIONS[number];

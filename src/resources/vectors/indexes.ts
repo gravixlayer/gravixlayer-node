@@ -7,7 +7,10 @@ import {
   CreateIndexRequest,
   UpdateIndexRequest,
   SUPPORTED_METRICS,
-  SUPPORTED_VECTOR_TYPES
+  SUPPORTED_VECTOR_TYPES,
+  SUPPORTED_INDEX_TYPES,
+  SUPPORTED_CLOUD_PROVIDERS,
+  SUPPORTED_REGIONS
 } from '../../types/vectors';
 import { GravixLayerBadRequestError } from '../../types/exceptions';
 
@@ -23,6 +26,9 @@ export class VectorIndexes {
       dimension,
       metric,
       vector_type = 'dense',
+      cloud_provider,
+      region,
+      index_type,
       metadata,
       delete_protection = false
     } = params;
@@ -48,21 +54,40 @@ export class VectorIndexes {
       );
     }
 
+    if (cloud_provider && !SUPPORTED_CLOUD_PROVIDERS.includes(cloud_provider as any)) {
+      throw new GravixLayerBadRequestError(
+        `Unsupported cloud provider. Supported: ${SUPPORTED_CLOUD_PROVIDERS.join(', ')}`
+      );
+    }
+
+    if (region && !SUPPORTED_REGIONS.includes(region as any)) {
+      throw new GravixLayerBadRequestError(
+        `Unsupported region. Supported: ${SUPPORTED_REGIONS.join(', ')}`
+      );
+    }
+
+    if (index_type && !SUPPORTED_INDEX_TYPES.includes(index_type as any)) {
+      throw new GravixLayerBadRequestError(
+        `Unsupported index type. Supported: ${SUPPORTED_INDEX_TYPES.join(', ')}`
+      );
+    }
+
     const requestData = {
       name,
       dimension,
       metric,
       vector_type,
+      cloud_provider,
+      region,
+      index_type,
       metadata,
       delete_protection
     };
 
     // Use vector database API endpoint
-    const vectorBaseURL = this.client.baseURL.replace('/v1/inference', '/v1/vector-db');
-    
     const response = await this.client._makeRequest(
       'POST',
-      `${vectorBaseURL}/indexes`,
+      'https://api.gravixlayer.com/v1/vectors/indexes',
       requestData
     );
 
@@ -74,11 +99,9 @@ export class VectorIndexes {
    * List all vector indexes
    */
   async list(): Promise<VectorIndexList> {
-    const vectorBaseURL = this.client.baseURL.replace('/v1/inference', '/v1/vector-db');
-    
     const response = await this.client._makeRequest(
       'GET',
-      `${vectorBaseURL}/indexes`
+      'https://api.gravixlayer.com/v1/vectors/indexes'
     );
 
     const result = await response.json();
@@ -93,11 +116,9 @@ export class VectorIndexes {
       throw new GravixLayerBadRequestError('Index ID is required');
     }
 
-    const vectorBaseURL = this.client.baseURL.replace('/v1/inference', '/v1/vector-db');
-    
     const response = await this.client._makeRequest(
       'GET',
-      `${vectorBaseURL}/indexes/${indexId}`
+      `https://api.gravixlayer.com/v1/vectors/indexes/${indexId}`
     );
 
     const result = await response.json();
@@ -112,11 +133,9 @@ export class VectorIndexes {
       throw new GravixLayerBadRequestError('Index ID is required');
     }
 
-    const vectorBaseURL = this.client.baseURL.replace('/v1/inference', '/v1/vector-db');
-    
     const response = await this.client._makeRequest(
-      'PATCH',
-      `${vectorBaseURL}/indexes/${indexId}`,
+      'PUT',
+      `https://api.gravixlayer.com/v1/vectors/indexes/${indexId}`,
       params
     );
 
@@ -132,11 +151,9 @@ export class VectorIndexes {
       throw new GravixLayerBadRequestError('Index ID is required');
     }
 
-    const vectorBaseURL = this.client.baseURL.replace('/v1/inference', '/v1/vector-db');
-    
     const response = await this.client._makeRequest(
       'DELETE',
-      `${vectorBaseURL}/indexes/${indexId}`
+      `https://api.gravixlayer.com/v1/vectors/indexes/${indexId}`
     );
 
     const result = await response.json();
