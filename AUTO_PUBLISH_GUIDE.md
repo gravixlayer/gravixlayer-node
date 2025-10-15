@@ -1,10 +1,10 @@
-# 🚀 Auto-Publish Guide
+# 🚀 Auto-Publish Guide - GitHub Actions Only
 
-## 🎯 **Two Ways to Auto-Publish**
+## 🎯 **GitHub Actions Auto-Publish (RECOMMENDED)**
 
-### **Option 1: GitHub Actions (Automatic) - RECOMMENDED**
+**Everything happens automatically via GitHub Actions - no local NPM publishing needed!**
 
-**How it works:**
+### **How It Works:**
 1. You make changes to your code
 2. Push to GitHub (`git push`)
 3. GitHub Actions automatically:
@@ -14,119 +14,50 @@
    - Publishes to NPM
    - Creates GitHub release
 
-**Usage:**
+## 📋 **Your Simple Workflow**
+
+### **Method 1: Direct Git Commands**
 ```bash
 # Make your changes
 git add .
 git commit -m "feat: add new feature"
 git push
 
-# That's it! GitHub Actions will handle the rest automatically
+# That's it! GitHub Actions handles everything else
 ```
 
-**To skip auto-publish for a specific commit:**
+### **Method 2: Helper Script (Recommended)**
 ```bash
-git commit -m "docs: update README [skip-publish]"
-git push
+npm run push-publish
+
+# This script will:
+# - Help you commit changes
+# - Push to GitHub
+# - GitHub Actions does the rest
 ```
-
-### **Option 2: Local Script (Manual)**
-
-**Usage:**
-```bash
-npm run auto-publish
-```
-
-**What it does:**
-1. Checks for uncommitted changes (commits them if needed)
-2. Runs all tests
-3. Builds project
-4. Bumps version by 0.0.1
-5. Pushes to GitHub
-6. Publishes to NPM
-7. Creates GitHub release
-
-## 📋 **Step-by-Step Workflow**
-
-### **Daily Development Workflow:**
-
-1. **Make Changes:**
-   ```bash
-   # Edit your code files
-   # Add new features, fix bugs, etc.
-   ```
-
-2. **Push Changes:**
-   ```bash
-   git add .
-   git commit -m "feat: your changes description"
-   git push
-   ```
-
-3. **Auto-Magic Happens:**
-   - GitHub Actions triggers automatically
-   - Version bumps from 0.0.4 → 0.0.5
-   - NPM package published
-   - GitHub release created
-   - All done! 🎉
-
-### **Alternative - Local Publishing:**
-
-```bash
-# If you prefer to publish locally
-npm run auto-publish
-```
-
-## 🔧 **Setup Requirements**
-
-### **For GitHub Actions (Option 1):**
-✅ NPM_TOKEN secret is already configured
-✅ GitHub Actions workflow is set up
-✅ Ready to use!
-
-### **For Local Script (Option 2):**
-```bash
-# Install GitHub CLI (optional, for releases)
-winget install GitHub.cli
-gh auth login
-
-# Make sure you're logged into NPM
-npm login
-```
-
-## 📊 **Version Progression**
-
-Your versions will automatically increment:
-- Current: 0.0.4
-- Next push: 0.0.5
-- After that: 0.0.6
-- And so on: 0.0.7, 0.0.8, 0.0.9, 0.0.10...
 
 ## 🎯 **Examples**
 
 ### **Example 1: Add New Feature**
 ```bash
-# You add a new memory feature
 git add .
 git commit -m "feat: add memory batch operations"
 git push
 
-# Result: gravixlayer@0.0.5 published automatically
+# Result: GitHub Actions will publish gravixlayer@0.0.6 automatically
 ```
 
 ### **Example 2: Fix Bug**
 ```bash
-# You fix a bug
 git add .
 git commit -m "fix: resolve memory search issue"
 git push
 
-# Result: gravixlayer@0.0.6 published automatically
+# Result: GitHub Actions will publish gravixlayer@0.0.7 automatically
 ```
 
 ### **Example 3: Update Docs (Skip Publish)**
 ```bash
-# You update documentation only
 git add .
 git commit -m "docs: update API documentation [skip-publish]"
 git push
@@ -134,61 +65,121 @@ git push
 # Result: No new version published (skipped)
 ```
 
-## 🚨 **Important Notes**
-
-1. **Auto-increment**: Always bumps by 0.0.1 (patch version)
-2. **Skip publishing**: Add `[skip-publish]` to commit message
-3. **Tests must pass**: Publishing fails if tests fail
-4. **NPM conflicts**: Script automatically finds next available version
-
-## 🔍 **Monitoring**
-
-### **Check GitHub Actions:**
-- Go to: https://github.com/gravixlayer/gravixlayer-node/actions
-- See real-time progress of auto-publishing
-
-### **Check Results:**
-- **NPM**: https://www.npmjs.com/package/gravixlayer
-- **Releases**: https://github.com/gravixlayer/gravixlayer-node/releases
-
-## 🎉 **Benefits**
-
-✅ **Zero manual work** - Just push your code
-✅ **Always tested** - Won't publish if tests fail  
-✅ **Consistent versioning** - Always +0.0.1
-✅ **Complete automation** - NPM + GitHub releases
-✅ **Safe publishing** - Checks for conflicts
-✅ **Skip option** - Use `[skip-publish]` when needed
-
-## 🛠️ **Troubleshooting**
-
-### **GitHub Actions Failed:**
-1. Check: https://github.com/gravixlayer/gravixlayer-node/actions
-2. Look at the error logs
-3. Common issues: NPM_TOKEN expired, tests failed
-
-### **Local Script Failed:**
+### **Example 4: Using Helper Script**
 ```bash
-# Check NPM login
-npm whoami
+npm run push-publish
 
-# Check GitHub CLI
-gh auth status
-
-# Re-run with debug
-npm run auto-publish
+# Interactive prompts:
+# - Enter commit message: "feat: awesome new feature"
+# - Skip auto-publish? (y/n): n
+# - Pushes to GitHub automatically
 ```
 
-### **Version Conflicts:**
-The script automatically finds the next available version, so this shouldn't happen.
+## 🚨 **Important Notes**
 
----
+1. **GitHub Actions Only**: All NPM publishing happens via GitHub Actions
+2. **Auto-increment**: Always bumps by 0.0.1 (patch version)
+3. **Skip publishing**: Add `[skip-publish]` to commit message
+4. **Tests must pass**: Publishing fails if tests fail
+5. **No local NPM needed**: You don't need to be logged into NPM locally
+
+## 📊 **Version Progression**
+
+Your versions will automatically increment:
+- Current: 0.0.5
+- Next push: 0.0.6
+- After that: 0.0.7
+- And so on: 0.0.8, 0.0.9, 0.0.10...
+
+## 🔧 **Setup Requirements**
+
+✅ **Already Done:**
+- NPM_TOKEN secret configured in GitHub
+- GitHub Actions workflow set up
+- Auto-publish on push enabled
+
+✅ **You Need:**
+- Git access to push to main branch
+- That's it! No NPM login required locally
+
+## 🔍 **Monitoring Your Releases**
+
+### **Check GitHub Actions:**
+- **Actions**: https://github.com/gravixlayer/gravixlayer-node/actions
+- **Real-time progress** of auto-publishing
+
+### **Check Results:**
+- **NPM Package**: https://www.npmjs.com/package/gravixlayer
+- **GitHub Releases**: https://github.com/gravixlayer/gravixlayer-node/releases
+
+## 🛠️ **Available Commands**
+
+| Command | Description |
+|---------|-------------|
+| `npm run push-publish` | Interactive commit and push (triggers auto-publish) |
+| `git push` | Direct push (triggers auto-publish) |
+| Manual workflow | Go to GitHub Actions → "Auto Publish on Push" → "Run workflow" |
+
+## 🎉 **Benefits of GitHub Actions Approach**
+
+✅ **No local setup needed** - No NPM login required
+✅ **Always tested** - Won't publish if tests fail
+✅ **Consistent environment** - Same build environment every time
+✅ **Automatic versioning** - Always +0.0.1
+✅ **Complete automation** - NPM + GitHub releases
+✅ **Safe publishing** - Checks for conflicts automatically
+✅ **Skip option** - Use `[skip-publish]` when needed
+✅ **Audit trail** - All publishes logged in GitHub Actions
+
+## 🚨 **Troubleshooting**
+
+### **GitHub Actions Failed:**
+1. **Check logs**: https://github.com/gravixlayer/gravixlayer-node/actions
+2. **Common issues**:
+   - Tests failed
+   - NPM_TOKEN expired (contact admin)
+   - Version conflict (auto-resolved)
+
+### **No Auto-Publish Triggered:**
+- Check if commit message contains `[skip-publish]`
+- Verify you pushed to `main` branch
+- Check if you modified only documentation files (ignored)
+
+### **Manual Trigger:**
+If auto-publish didn't trigger, you can manually run it:
+1. Go to: https://github.com/gravixlayer/gravixlayer-node/actions
+2. Click "Auto Publish on Push"
+3. Click "Run workflow"
+4. Select options and run
 
 ## 🚀 **Ready to Use!**
 
-**Your new workflow:**
-1. Make changes
-2. `git push`
-3. Done! ✨
+**Your new workflow is super simple:**
 
-Everything else happens automatically. Welcome to effortless publishing! 🎉
+1. **Make changes** to your code
+2. **Run**: `npm run push-publish` (or use git directly)
+3. **Done!** ✨ GitHub Actions handles everything else
+
+**No NPM login needed. No local publishing. Just push and go!** 🎉
+
+---
+
+## 📋 **Quick Reference**
+
+```bash
+# Quick publish workflow
+npm run push-publish
+
+# Or manual git
+git add .
+git commit -m "feat: your changes"
+git push
+
+# Skip publishing
+git commit -m "docs: update [skip-publish]"
+
+# Monitor progress
+# https://github.com/gravixlayer/gravixlayer-node/actions
+```
+
+**Everything else is automatic!** 🚀
