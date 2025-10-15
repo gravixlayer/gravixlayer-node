@@ -42,7 +42,10 @@
     "release:major": "npm version major && git push origin main --tags",
     "reset-version": "node scripts/reset-version.js",
     "create-release": "node scripts/create-github-release.js",
-    "publish:manual": "node scripts/manual-publish.js"
+    "publish:manual": "node scripts/manual-publish.js",
+    "publish:complete": "node scripts/publish-with-release.js",
+    "create-release-v0.0.4": "node scripts/create-release-v0.0.4.js",
+    "auto-publish": "node scripts/auto-publish.js"
   },
   "keywords": [
     "gravixlayer",
