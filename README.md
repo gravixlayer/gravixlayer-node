@@ -429,7 +429,7 @@ const completion: ChatCompletion = await client.chat.completions.create(params);
 
 ## License
 
-MIT
+Apache 2.0
 
 ## Support
 
