@@ -264,7 +264,7 @@ await client.memory.delete({
 **Memory types**: Factual, episodic, working, semantic  
 **Features**: AI inference, semantic search, user isolation
 
-### 🚀 Deployments
+###  Deployments
 
 Deploy and manage custom model instances with auto-scaling capabilities.
 
@@ -300,7 +300,7 @@ await client.deployments.update("deployment-id", {
 await client.deployments.delete("deployment-id");
 ```
 
-### ⚡ Accelerators
+### Accelerators
 
 Access available GPU hardware and compute resources.
 
@@ -316,7 +316,7 @@ const accelerator = await client.accelerators.get("nvidia-a100-80gb");
 console.log(`${accelerator.name}: ${accelerator.compute_capability}`);
 ```
 
-## 🖥️ CLI Usage
+##  CLI Usage
 
 Comprehensive command-line interface for all GravixLayer operations.
 
@@ -382,7 +382,6 @@ gravixlayer deployments hardware --list
 ### Environment Variables
 ```bash
 export GRAVIXLAYER_API_KEY="your-api-key-here"
-export GRAVIXLAYER_BASE_URL="https://api.gravixlayer.com"
 ```
 
 ### Client Options
@@ -477,40 +476,7 @@ const memories: MemorySearchResult = await client.memory.search({
 });
 ```
 
-## Testing
 
-The SDK includes comprehensive tests. Run them locally:
-
-```bash
-npm install
-
-npm test
-
-npm run test:unit
-npm run test:integration
-npm run test:cli
-
-npm run test:comprehensive
-```
-
-## Examples
-
-Check out the `test/` directory for comprehensive examples:
-
-- **`mock-api-test.cjs`**: Complete API interaction examples
-- **`unit-test.cjs`**: SDK functionality demonstrations  
-- **`simple-unit-test.cjs`**: Basic usage patterns
-- **`cli-test.cjs`**: Command-line interface examples
-
-## Contributing
-
-We welcome contributions! Please see our contributing guidelines:
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
 
 ## License
 
