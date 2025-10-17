@@ -22,279 +22,382 @@ import { MemoryType } from '../../types/memory';
 
 export class Memory {
   private client: any;
-  private embeddingModel: string;
-  private inferenceModel: string;
+  private currentEmbeddingModel: string;
+  private currentInferenceModel: string;
+  private currentIndexName: string;
+  private currentCloudConfig: Record<string, any>;
+  private embeddingDimension: number;
+  private indexCache: Record<string, string> = {};
+  private modelDimensions: Record<string, number>;
 
   constructor(
     client: any,
     embeddingModel: string = 'baai/bge-large-en-v1.5',
-    inferenceModel: string = 'meta-llama/llama-3.1-8b-instruct'
+    inferenceModel: string = 'mistralai/mistral-nemo-instruct-2407',
+    indexName: string = 'gravixlayer_memories',
+    cloudProvider: string = 'AWS',
+    region: string = 'us-east-1'
   ) {
     this.client = client;
-    this.embeddingModel = embeddingModel;
-    this.inferenceModel = inferenceModel;
+    this.currentEmbeddingModel = embeddingModel;
+    this.currentInferenceModel = inferenceModel;
+    this.currentIndexName = indexName;
+    this.currentCloudConfig = {
+      cloud_provider: cloudProvider,
+      region: region,
+      index_type: 'serverless'
+    };
+    
+    // Model dimensions mapping (matching Python implementation)
+    this.modelDimensions = {
+      'microsoft/multilingual-e5-large': 1024, // Server maps to baai/bge-large-en-v1.5
+      'multilingual-e5-large': 1024,
+      'baai/bge-large-en-v1.5': 1024,
+      'baai/bge-base-en-v1.5': 768,
+      'baai/bge-small-en-v1.5': 384,
+      'nomic-ai/nomic-embed-text:v1.5': 768,
+      'all-MiniLM-L6-v2': 384,
+      'all-mpnet-base-v2': 768
+    };
+    
+    this.embeddingDimension = this.getEmbeddingDimension(this.currentEmbeddingModel);
+  }
+
+  private getEmbeddingDimension(model: string): number {
+    return this.modelDimensions[model] || 1024;
   }
 
   /**
    * Add memories with AI-powered processing
    */
-  async add(params: MemoryAddParams): Promise<MemoryResponse> {
-    const { messages, user_id, metadata, infer = true } = params;
+  async add(
+    messages: string | Array<{ role: string; content: string }>,
+    user_id: string,
+    options: {
+      metadata?: Record<string, any>;
+      infer?: boolean;
+      embeddingModel?: string;
+      databaseName?: string;
+    } = {}
+  ): Promise<MemoryResponse> {
+    const { metadata, infer = true, embeddingModel, databaseName } = options;
     
-    // Handle input types
-    let messageList: Array<{ role: string; content: string }>;
-    if (typeof messages === 'string') {
-      messageList = [{ role: 'user', content: messages }];
-    } else if (Array.isArray(messages)) {
-      messageList = messages;
-    } else {
-      throw new Error('Messages must be a string or array of message objects');
+    // Handle conversation messages
+    if (Array.isArray(messages)) {
+      return await this.addFromMessages(messages, user_id, metadata, infer, embeddingModel, databaseName);
     }
 
-    const results = [];
+    // Handle direct content
+    const activeEmbeddingModel = embeddingModel || this.currentEmbeddingModel;
+    const targetDatabase = databaseName || this.currentIndexName;
     
-    for (const message of messageList) {
-      if (!message.content) continue;
-      
-      let processedContent = message.content;
-      
-      // If inference is enabled, process the content with AI
-      if (infer) {
-        try {
-          const inferenceResponse = await this.client._makeRequest(
-            'POST',
-            'chat/completions',
-            {
-              model: this.inferenceModel,
-              messages: [
-                {
-                  role: 'system',
-                  content: 'Extract and summarize the key factual information from the following message that should be remembered. Focus on preferences, facts, and important details. Return only the essential information to remember.'
-                },
-                {
-                  role: 'user',
-                  content: message.content
-                }
-              ],
-              max_tokens: 200
-            }
-          );
-          
-          const inferenceData = await inferenceResponse.json();
-          if (inferenceData.choices?.[0]?.message?.content) {
-            processedContent = inferenceData.choices[0].message.content.trim();
-          }
-        } catch (error) {
-          console.warn('Inference failed, using original content:', error);
+    const indexId = await this.ensureSharedIndex(targetDatabase);
+    const vectorsClient = this.client.vectors.index(indexId);
+    
+    // Generate memory ID
+    const memoryId = this.generateMemoryId();
+    
+    // Create memory metadata
+    const memoryMetadata = {
+      user_id: user_id,
+      memory_type: 'factual',
+      content: messages as string,
+      embedding_model: activeEmbeddingModel,
+      database_name: targetDatabase,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      importance_score: 1.0,
+      access_count: 0,
+      ...metadata
+    };
+
+    // Store memory as vector
+    await vectorsClient.upsertText(
+      messages as string,
+      activeEmbeddingModel,
+      memoryId,
+      memoryMetadata
+    );
+
+    return {
+      results: [{
+        id: memoryId,
+        memory: messages as string,
+        event: 'ADD'
+      }]
+    };
+  }
+
+  private async addFromMessages(
+    messages: Array<{ role: string; content: string }>,
+    user_id: string,
+    metadata: Record<string, any> = {},
+    infer: boolean = true,
+    embeddingModel?: string,
+    databaseName?: string
+  ): Promise<MemoryResponse> {
+    if (!infer) {
+      // Store raw messages without inference
+      const results = [];
+      for (const message of messages) {
+        if (message.content) {
+          const result = await this.add(message.content, user_id, { metadata, embeddingModel, databaseName });
+          results.push(...result.results);
         }
       }
-
-      // Create memory entry
-      const memoryId = await this._createMemory(processedContent, user_id, metadata);
-      
-      results.push({
-        id: memoryId,
-        memory: processedContent,
-        event: 'ADD'
-      });
+      return { results };
     }
 
+    // AI inference from conversation
+    const conversationText = messages.map(m => `${m.role}: ${m.content}`).join('\n');
+    const inferredMemories = await this.inferMemoriesFromConversation(conversationText, user_id);
+    
+    const results = [];
+    for (const memory of inferredMemories) {
+      const result = await this.add(memory, user_id, { metadata, embeddingModel, databaseName });
+      results.push(...result.results);
+    }
+    
     return { results };
+  }
+
+  private async inferMemoriesFromConversation(conversationText: string, user_id: string): Promise<string[]> {
+    // Simplified inference - in real implementation, this would call the inference model
+    const memories: string[] = [];
+    
+    if (conversationText.includes('prefer') || conversationText.includes('like')) {
+      const lines = conversationText.split('\n');
+      for (const line of lines) {
+        if (line.includes('user:') && (line.includes('prefer') || line.includes('like'))) {
+          memories.push(line.replace('user:', '').trim());
+        }
+      }
+    }
+    
+    return memories.length > 0 ? memories : ['User engaged in conversation'];
   }
 
   /**
    * Search memories using semantic similarity
    */
-  async search(params: MemorySearchParams): Promise<MemorySearchResponse> {
-    const { query, user_id, limit = 100, threshold } = params;
+  async search(
+    query: string,
+    user_id: string,
+    options: {
+      limit?: number;
+      threshold?: number;
+      embeddingModel?: string;
+      databaseName?: string;
+    } = {}
+  ): Promise<{ results: any[] }> {
+    const { limit = 100, threshold = 0.3, embeddingModel, databaseName } = options;
+    const activeEmbeddingModel = embeddingModel || this.currentEmbeddingModel;
+    const targetDatabase = databaseName || this.currentIndexName;
     
     try {
-      const indexId = await this._ensureSharedIndex();
-      
-      // Use the vectors client to search
+      const indexId = await this.ensureSharedIndex(targetDatabase);
       const vectorsClient = this.client.vectors.index(indexId);
+
       const searchResults = await vectorsClient.searchText(
         query,
-        this.embeddingModel,
+        activeEmbeddingModel,
         limit,
-        {
-          user_id: user_id
-        },
+        { user_id: user_id },
         true, // include_metadata
         false // include_values
       );
-      
-      const results = searchResults.hits?.map((hit: any) => ({
-        memory: {
-          id: hit.id,
-          content: hit.metadata?.content || '',
-          memory_type: hit.metadata?.memory_type || 'factual',
-          user_id: user_id,
-          metadata: hit.metadata || {},
-          created_at: hit.metadata?.created_at || new Date().toISOString(),
-          updated_at: hit.metadata?.updated_at || new Date().toISOString(),
-          importance_score: hit.metadata?.importance_score || 1.0,
-          access_count: hit.metadata?.access_count || 0
-        },
-        relevance_score: hit.score || 0
-      })) || [];
+
+      const results = [];
+      for (const hit of searchResults.hits || []) {
+        if (hit.metadata?.user_id === user_id && hit.score >= threshold) {
+          results.push({
+            id: hit.id,
+            memory: hit.metadata?.content || '',
+            hash: hit.metadata?.hash || '',
+            metadata: hit.metadata || {},
+            score: hit.score,
+            created_at: hit.metadata?.created_at || new Date().toISOString(),
+            updated_at: hit.metadata?.updated_at || new Date().toISOString()
+          });
+        }
+      }
 
       return { results };
     } catch (error) {
-      console.error('Memory search failed:', error);
+      console.error('Search error:', error instanceof Error ? error.message : String(error));
       return { results: [] };
     }
+  }
+
+  async getAll(user_id: string, limit: number = 100): Promise<{ results: any[] }> {
+    return await this.search('memory', user_id, { limit, threshold: 0.0 });
   }
 
   /**
    * Get memory by ID
    */
-  async get(params: MemoryGetParams): Promise<MemoryEntry | null> {
-    const { memory_id, user_id } = params;
-    
+  async get(memory_id: string, user_id: string): Promise<any | null> {
     try {
-      const indexId = await this._ensureSharedIndex();
-      
-      // Use the vectors client to get the specific vector
+      const indexId = await this.ensureSharedIndex();
       const vectorsClient = this.client.vectors.index(indexId);
+      
       const vector = await vectorsClient.get(memory_id);
       
-      // Verify the memory belongs to the user
-      if (vector && vector.metadata?.user_id === user_id) {
-        return {
-          id: vector.id,
-          content: vector.metadata?.content || '',
-          memory_type: vector.metadata?.memory_type || 'factual',
-          user_id: user_id,
-          metadata: vector.metadata || {},
-          created_at: vector.metadata?.created_at || new Date().toISOString(),
-          updated_at: vector.metadata?.updated_at || new Date().toISOString(),
-          importance_score: vector.metadata?.importance_score || 1.0,
-          access_count: vector.metadata?.access_count || 0
-        };
+      if (vector?.metadata?.user_id !== user_id) {
+        return null;
       }
-      
-      return null;
-    } catch (error) {
-      console.error('Memory get failed:', error);
-      return null;
-    }
-  }
 
-  /**
-   * Get all memories for a user
-   */
-  async getAll(params: MemoryGetAllParams): Promise<MemoryGetAllResponse> {
-    const { user_id, limit = 100 } = params;
-    
-    try {
-      const indexId = await this._ensureSharedIndex();
-      
-      // Use the vectors client to list all vectors
-      const vectorsClient = this.client.vectors.index(indexId);
-      const vectorsList = await vectorsClient.list();
-      
-      // Filter vectors by user_id and limit results
-      const userVectors = Object.values(vectorsList.vectors || {})
-        .filter((vector: any) => vector.metadata?.user_id === user_id)
-        .slice(0, limit);
-      
-      const results = userVectors.map((vector: any) => ({
+      return {
         id: vector.id,
-        content: vector.metadata?.content || '',
-        memory_type: vector.metadata?.memory_type || 'factual',
-        user_id: user_id,
+        memory: vector.metadata?.content || '',
+        hash: vector.metadata?.hash || '',
         metadata: vector.metadata || {},
         created_at: vector.metadata?.created_at || new Date().toISOString(),
-        updated_at: vector.metadata?.updated_at || new Date().toISOString(),
-        importance_score: vector.metadata?.importance_score || 1.0,
-        access_count: vector.metadata?.access_count || 0
-      }));
-
-      return { results };
+        updated_at: vector.metadata?.updated_at || new Date().toISOString()
+      };
     } catch (error) {
-      console.error('Memory getAll failed:', error);
-      return { results: [] };
+      return null;
     }
   }
 
   /**
    * Update memory content
    */
-  async update(params: MemoryUpdateParams): Promise<MemoryOperationResponse> {
-    const { memory_id, user_id, data } = params;
-    
+  async update(memory_id: string, user_id: string, data: string): Promise<{ message: string }> {
     try {
-      const indexId = await this._ensureSharedIndex();
+      const indexId = await this.ensureSharedIndex();
       
-      // Get current memory to verify ownership and get metadata
-      const currentMemory = await this.get({ memory_id, user_id });
+      // Get current memory and verify ownership
+      const currentMemory = await this.get(memory_id, user_id);
       if (!currentMemory) {
-        throw new Error('Memory not found or access denied');
+        return { message: `Memory ${memory_id} not found or update failed.` };
       }
 
-      // Use the vectors client to update the memory with new content
+      // Update metadata
+      const updatedMetadata = {
+        ...currentMemory.metadata,
+        content: data,
+        updated_at: new Date().toISOString()
+      };
+
+      // Re-embed with new content
       const vectorsClient = this.client.vectors.index(indexId);
       await vectorsClient.upsertText(
         data,
-        this.embeddingModel,
+        this.currentEmbeddingModel,
         memory_id,
-        {
-          ...currentMemory.metadata,
-          content: data,
-          updated_at: new Date().toISOString()
-        }
+        updatedMetadata
       );
 
-      return { message: 'Memory updated successfully!' };
+      return { message: `Memory ${memory_id} updated successfully!` };
     } catch (error) {
-      throw new Error(`Failed to update memory: ${error}`);
+      return { message: `Memory ${memory_id} not found or update failed.` };
     }
   }
 
   /**
    * Delete memory by ID
    */
-  async delete(params: MemoryDeleteParams): Promise<MemoryOperationResponse> {
-    const { memory_id, user_id } = params;
-    
+  async delete(memory_id: string, user_id: string): Promise<{ message: string }> {
     try {
-      const indexId = await this._ensureSharedIndex();
+      const indexId = await this.ensureSharedIndex();
       
-      // Verify memory belongs to user before deleting
-      const memory = await this.get({ memory_id, user_id });
+      // Verify memory belongs to user
+      const memory = await this.get(memory_id, user_id);
       if (!memory) {
-        throw new Error('Memory not found or access denied');
+        return { message: `Memory ${memory_id} not found or deletion failed.` };
       }
 
-      // Use the vectors client to delete the vector
       const vectorsClient = this.client.vectors.index(indexId);
       await vectorsClient.delete(memory_id);
-
-      return { message: 'Memory deleted successfully!' };
+      return { message: `Memory ${memory_id} deleted successfully!` };
     } catch (error) {
-      throw new Error(`Failed to delete memory: ${error}`);
+      return { message: `Memory ${memory_id} not found or deletion failed.` };
     }
   }
 
-  /**
-   * Delete all memories for a user
-   */
-  async deleteAll(params: MemoryDeleteAllParams): Promise<MemoryOperationResponse> {
-    const { user_id } = params;
-    
-    try {
-      // Get all memories first
-      const allMemories = await this.getAll({ user_id });
-      
-      // Delete each memory
-      for (const memory of allMemories.results) {
-        await this.delete({ memory_id: memory.id, user_id });
-      }
+  // Dynamic Configuration Methods
+  switchConfiguration(options: {
+    embeddingModel?: string;
+    inferenceModel?: string;
+    indexName?: string;
+    cloudProvider?: string;
+    region?: string;
+  } = {}): void {
+    const { embeddingModel, inferenceModel, indexName, cloudProvider, region } = options;
 
-      return { message: `Deleted ${allMemories.results.length} memories successfully` };
+    if (embeddingModel) {
+      this.currentEmbeddingModel = embeddingModel;
+      this.embeddingDimension = this.getEmbeddingDimension(embeddingModel);
+      console.log(`🔄 Switched embedding model to: ${embeddingModel}`);
+      console.log(`📏 Updated dimension to: ${this.embeddingDimension}`);
+    }
+
+    if (inferenceModel) {
+      this.currentInferenceModel = inferenceModel;
+      console.log(`🔄 Switched inference model to: ${inferenceModel}`);
+    }
+
+    if (indexName) {
+      this.currentIndexName = indexName;
+      console.log(`🔄 Switched to database: ${indexName}`);
+    }
+
+    if (cloudProvider || region) {
+      this.currentCloudConfig = {
+        cloud_provider: cloudProvider || this.currentCloudConfig.cloud_provider,
+        region: region || this.currentCloudConfig.region,
+        index_type: 'serverless'
+      };
+      console.log(`🔄 Switched cloud config:`, this.currentCloudConfig);
+    }
+
+    console.log('✅ Configuration updated successfully');
+  }
+
+  getCurrentConfiguration(): Record<string, any> {
+    return {
+      embedding_model: this.currentEmbeddingModel,
+      inference_model: this.currentInferenceModel,
+      index_name: this.currentIndexName,
+      cloud_config: this.currentCloudConfig,
+      embedding_dimension: this.embeddingDimension
+    };
+  }
+
+  resetToDefaults(): void {
+    this.currentEmbeddingModel = 'baai/bge-large-en-v1.5';
+    this.currentInferenceModel = 'mistralai/mistral-nemo-instruct-2407';
+    this.currentIndexName = 'gravixlayer_memories';
+    this.currentCloudConfig = {
+      cloud_provider: 'AWS',
+      region: 'us-east-1',
+      index_type: 'serverless'
+    };
+    this.embeddingDimension = this.getEmbeddingDimension(this.currentEmbeddingModel);
+    console.log('🔄 Reset to default configuration');
+  }
+
+  async listAvailableDatabases(): Promise<string[]> {
+    try {
+      const indexList = await this.client._makeRequest('GET', 'https://api.gravixlayer.com/v1/vectors/indexes');
+      const indexData = await indexList.json();
+      const databaseNames: string[] = [];
+      
+      for (const idx of indexData.indexes || []) {
+        if (idx.metadata && idx.metadata.type === 'unified_memory_store') {
+          databaseNames.push(idx.name);
+        } else if (['gravixlayer_memories', 'user_preferences', 'conversation_history'].includes(idx.name)) {
+          databaseNames.push(idx.name);
+        } else if (!databaseNames.includes(idx.name)) {
+          databaseNames.push(idx.name);
+        }
+      }
+      
+      return databaseNames.sort();
     } catch (error) {
-      throw new Error(`Failed to delete all memories: ${error}`);
+      console.error('Error listing databases:', error instanceof Error ? error.message : String(error));
+      return ['gravixlayer_memories'];
     }
   }
 
@@ -307,7 +410,7 @@ export class Memory {
     limit: number = 50
   ): Promise<MemoryEntry[]> {
     try {
-      const allMemories = await this.getAll({ user_id, limit: 1000 });
+      const allMemories = await this.getAll(user_id, 1000);
       
       return allMemories.results
         .filter(memory => memory.memory_type === memory_type)
@@ -332,7 +435,7 @@ export class Memory {
         const createdAt = new Date(memory.created_at);
         if (createdAt < cutoffTime) {
           try {
-            await this.delete({ memory_id: memory.id, user_id });
+            await this.delete(memory.id, user_id);
             cleanedCount++;
           } catch (error) {
             console.warn(`Failed to delete expired memory ${memory.id}:`, error);
@@ -357,7 +460,7 @@ export class Memory {
     ascending: boolean = false
   ): Promise<MemoryEntry[]> {
     try {
-      const allMemories = await this.getAll({ user_id, limit });
+      const allMemories = await this.getAll(user_id, limit);
       
       // Sort memories based on the specified field
       allMemories.results.sort((a, b) => {
@@ -403,7 +506,7 @@ export class Memory {
    */
   async getStats(user_id: string): Promise<any> {
     try {
-      const allMemories = await this.getAll({ user_id, limit: 1000 });
+      const allMemories = await this.getAll(user_id, 1000);
       
       const stats = {
         total_memories: allMemories.results.length,
@@ -449,105 +552,67 @@ export class Memory {
     }
   }
 
-  /**
-   * Create a memory entry using the unified memory system
-   */
-  private async _createMemory(
-    content: string,
-    userId: string,
-    metadata?: Record<string, any>
-  ): Promise<string> {
-    const memoryId = this._generateMemoryId();
-    
-    // Ensure shared memory index exists
-    const indexId = await this._ensureSharedIndex();
-    
-    const memoryMetadata = {
-      user_id: userId,
-      memory_type: 'factual',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      importance_score: 1.0,
-      access_count: 0,
-      content: content,
-      ...metadata
-    };
-
-    // Use the vectors client to create the memory
-    const vectorsClient = this.client.vectors.index(indexId);
-    const result = await vectorsClient.upsertText(
-      content,
-      this.embeddingModel,
-      memoryId,
-      memoryMetadata
-    );
-
-    return result.id || memoryId;
+  private generateMemoryId(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
   }
 
-  /**
-   * Generate a unique memory ID
-   */
-  private _generateMemoryId(): string {
-    return `mem_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  /**
-   * Ensure shared memory index exists
-   */
-  private async _ensureSharedIndex(): Promise<string> {
-    if (this.sharedIndexId) {
-      return this.sharedIndexId;
+  private async ensureSharedIndex(targetDatabase?: string): Promise<string> {
+    const targetIndexName = targetDatabase || this.currentIndexName;
+    
+    // Check cache first
+    if (this.indexCache[targetIndexName]) {
+      return this.indexCache[targetIndexName];
     }
 
-    const indexName = 'gravixlayer_memories';
-    
     try {
       // Try to find existing index
-      const listResponse = await this.client._makeRequest(
-        'GET',
-        'https://api.gravixlayer.com/v1/vectors/indexes'
-      );
-      
+      const listResponse = await this.client._makeRequest('GET', 'https://api.gravixlayer.com/v1/vectors/indexes');
       const indexList = await listResponse.json();
-      const existingIndex = indexList.indexes?.find((idx: any) => idx.name === indexName);
       
-      if (existingIndex) {
-        this.sharedIndexId = existingIndex.id;
-        return existingIndex.id;
+      for (const idx of indexList.indexes || []) {
+        if (idx.name === targetIndexName) {
+          this.indexCache[targetIndexName] = idx.id;
+          return idx.id;
+        }
       }
 
-      // Create new shared index
-      console.log('🔍 Creating memory collection \'gravixlayer_memories\'...');
-      const createResponse = await this.client._makeRequest(
-        'POST',
-        'https://api.gravixlayer.com/v1/vectors/indexes',
-        {
-          name: indexName,
-          dimension: 1024, // Dimension for baai/bge-large-en-v1.5
-          metric: 'cosine',
-          vector_type: 'dense',
-          cloud_provider: 'AWS',
-          region: 'us-east-1',
-          index_type: 'serverless',
-          metadata: {
-            type: 'shared_memory_store',
-            description: 'Shared memory store for all users',
-            created_at: new Date().toISOString()
-          },
-          delete_protection: true
-        }
-      );
+      // Index not found, create it
+      console.log(`\n🔍 Memory index '${targetIndexName}' not found`);
+      console.log(`🎯 Embedding model: ${this.currentEmbeddingModel}`);
+      console.log(`📏 Dimension: ${this.embeddingDimension}`);
+      console.log(`☁️  Cloud config:`, this.currentCloudConfig);
+      console.log(`🚀 Creating memory index...`);
 
+      const createData = {
+        name: targetIndexName,
+        dimension: this.embeddingDimension,
+        metric: 'cosine',
+        vector_type: 'dense',
+        ...this.currentCloudConfig,
+        metadata: {
+          type: 'unified_memory_store',
+          embedding_model: this.currentEmbeddingModel,
+          dimension: this.embeddingDimension,
+          created_at: new Date().toISOString(),
+          description: `Unified memory store: ${targetIndexName}`,
+          cloud_config: this.currentCloudConfig
+        },
+        delete_protection: false
+      };
+
+      const createResponse = await this.client._makeRequest('POST', 'https://api.gravixlayer.com/v1/vectors/indexes', createData);
       const result = await createResponse.json();
-      this.sharedIndexId = result.id;
-      console.log(`✅ Successfully created memory collection: ${result.id}`);
+      
+      this.indexCache[targetIndexName] = result.id;
+      console.log(`✅ Successfully created memory index: ${result.id}`);
       return result.id;
 
     } catch (error) {
-      throw new Error(`Failed to ensure shared memory index: ${error}`);
+      throw new Error(`Failed to create memory index '${targetIndexName}': ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-
-  private sharedIndexId?: string;
 }

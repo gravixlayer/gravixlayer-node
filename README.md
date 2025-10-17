@@ -113,14 +113,14 @@ Convert text into high-dimensional vectors for semantic search and similarity co
 
 ```javascript
 const embedding = await client.embeddings.create({
-  model: "text-embedding-ada-002",
+  model: "microsoft/multilingual-e5-large",
   input: "Machine learning is transforming industries"
 });
 
 console.log(`Embedding dimension: ${embedding.data[0].embedding.length}`);
 
 const batchEmbeddings = await client.embeddings.create({
-  model: "text-embedding-ada-002",
+  model: "microsoft/multilingual-e5-large",
   input: [
     "Artificial intelligence",
     "Machine learning",
@@ -178,7 +178,7 @@ const vectors = client.vectors.index(index.id);
 
 await vectors.upsertText({
   text: "Our company offers 24/7 customer support with live chat",
-  model: "text-embedding-ada-002",
+  model: "microsoft/multilingual-e5-large",
   id: "support-info-1",
   metadata: { 
     category: "support",
@@ -189,13 +189,13 @@ await vectors.upsertText({
 await vectors.batchUpsertText([
   {
     text: "We provide free shipping on orders over $50",
-    model: "text-embedding-ada-002",
+    model: "microsoft/multilingual-e5-large",
     id: "shipping-1",
     metadata: { category: "shipping" }
   },
   {
     text: "Returns are accepted within 30 days of purchase",
-    model: "text-embedding-ada-002", 
+    model: "microsoft/multilingual-e5-large", 
     id: "returns-1",
     metadata: { category: "returns" }
   }
@@ -203,7 +203,7 @@ await vectors.batchUpsertText([
 
 const results = await vectors.searchText({
   query: "How can I get help with my order?",
-  model: "text-embedding-ada-002",
+  model: "microsoft/multilingual-e5-large",
   top_k: 3,
   filter: { category: "support" }
 });
@@ -366,8 +366,8 @@ gravixlayer memory delete user-123 memory-abc123
 gravixlayer vectors index create --name "knowledge-base" --dimension 1536 --metric cosine
 gravixlayer vectors index list
 
-gravixlayer vectors vector upsert-text <index-id> --text "Customer support info" --model "text-embedding-ada-002"
-gravixlayer vectors vector search-text <index-id> --query "help with orders" --model "text-embedding-ada-002" --top-k 5
+gravixlayer vectors vector upsert-text <index-id> --text "Customer support info" --model "microsoft/multilingual-e5-large"
+gravixlayer vectors vector search-text <index-id> --query "help with orders" --model "microsoft/multilingual-e5-large" --top-k 5
 ```
 
 ### Deployments

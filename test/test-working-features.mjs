@@ -33,7 +33,7 @@ console.log();
 console.log('3. Testing Embeddings...');
 try {
   const embedding = await client.embeddings.create({
-    model: "text-embedding-ada-002",
+    model: "microsoft/multilingual-e5-large",
     input: "Hello, world!"
   });
   console.log('✅ Embedding dimension:', embedding.data[0].embedding.length);
@@ -113,7 +113,7 @@ try {
   // Upsert text vector
   const textVector = await vectors.upsertText({
     text: "This is a test document about artificial intelligence and machine learning",
-    model: "text-embedding-ada-002",
+    model: "microsoft/multilingual-e5-large",
     id: "test-vector-1",
     metadata: { category: "test", topic: "ai" }
   });
@@ -122,7 +122,7 @@ try {
   // Search using text
   const searchResults = await vectors.searchText({
     query: "artificial intelligence",
-    model: "text-embedding-ada-002",
+    model: "microsoft/multilingual-e5-large",
     top_k: 5
   });
   console.log('✅ Search completed in', searchResults.query_time_ms + 'ms');

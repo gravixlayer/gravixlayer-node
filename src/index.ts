@@ -5,6 +5,7 @@
 import { GravixLayer } from './client';
 
 export { GravixLayer, type GravixLayerOptions } from './client';
+export { Memory } from './resources/memory/memory';
 export { AsyncGravixLayer, type AsyncGravixLayerOptions } from './async-client';
 
 // Chat types

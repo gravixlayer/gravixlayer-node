@@ -262,7 +262,7 @@ class CLITester {
           [
             'vectors', 'vector', 'upsert-text', indexId,
             '--text', 'This is a test document',
-            '--model', 'text-embedding-ada-002',
+            '--model', 'microsoft/multilingual-e5-large',
             '--id', 'test-vector-1',
             '--metadata', '{"category": "test"}'
           ],
@@ -275,7 +275,7 @@ class CLITester {
           [
             'vectors', 'vector', 'search-text', indexId,
             '--query', 'test document',
-            '--model', 'text-embedding-ada-002',
+            '--model', 'microsoft/multilingual-e5-large',
             '--top-k', '5'
           ],
           'Search completed'

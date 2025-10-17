@@ -123,7 +123,7 @@ function mockFetch(url, options) {
               embedding: new Array(1536).fill(0).map(() => Math.random() - 0.5),
               index: 0
             }],
-            model: 'text-embedding-ada-002',
+            model: 'microsoft/multilingual-e5-large',
             usage: {
               prompt_tokens: 5,
               total_tokens: 5
@@ -235,7 +235,7 @@ function mockFetch(url, options) {
             json: () => Promise.resolve({
               id: 'vec-123',
               text: 'test text',
-              model: 'text-embedding-ada-002',
+              model: 'microsoft/multilingual-e5-large',
               embedding: new Array(1536).fill(0).map(() => Math.random() - 0.5),
               metadata: { test: true },
               delete_protection: false,
@@ -368,7 +368,7 @@ class MockAPITester {
     const client = new GravixLayer({ apiKey: 'mock-key' });
     
     const embedding = await client.embeddings.create({
-      model: 'text-embedding-ada-002',
+      model: 'microsoft/multilingual-e5-large',
       input: 'Hello'
     });
 
@@ -411,7 +411,7 @@ class MockAPITester {
     const vectors = client.vectors.index(index.id);
     const textVector = await vectors.upsertText({
       text: 'test text',
-      model: 'text-embedding-ada-002',
+      model: 'microsoft/multilingual-e5-large',
       metadata: { test: true }
     });
 
@@ -420,7 +420,7 @@ class MockAPITester {
     // Search
     const searchResults = await vectors.searchText({
       query: 'test',
-      model: 'text-embedding-ada-002',
+      model: 'microsoft/multilingual-e5-large',
       top_k: 5
     });
 

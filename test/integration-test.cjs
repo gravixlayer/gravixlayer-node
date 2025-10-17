@@ -10,7 +10,7 @@ const path = require('path');
 const TEST_CONFIG = {
   apiKey: process.env.GRAVIXLAYER_API_KEY,
   testModel: "meta-llama/llama-3.1-8b-instruct",
-  embeddingModel: "text-embedding-ada-002",
+  embeddingModel: "microsoft/multilingual-e5-large",
   timeout: 30000
 };
 
