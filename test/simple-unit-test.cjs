@@ -14,7 +14,7 @@ class SimpleUnitTester {
   async runTest(testName, testFn) {
     console.log(`🧪 Testing: ${testName}`);
     const startTime = Date.now();
-    
+
     try {
       await testFn();
       const duration = Date.now() - startTime;
@@ -37,7 +37,7 @@ class SimpleUnitTester {
     }
 
     const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
-    
+
     if (!packageJson.name) {
       throw new Error('Package name is missing');
     }
@@ -196,7 +196,7 @@ class SimpleUnitTester {
     }
 
     console.log('\n' + (failed === 0 ? '🎉 All pre-build tests passed!' : `⚠️  ${failed} test(s) failed`));
-    
+
     return failed === 0;
   }
 }
