@@ -2,7 +2,7 @@
  * Unit tests for GravixLayer JavaScript SDK
  * Tests core functionality, error handling, and edge cases
  */
-const { GravixLayer } = require('../dist/index.js');
+const { GravixLayer } = require('../dist/index.cjs');
 
 class UnitTester {
   constructor() {
@@ -136,7 +136,7 @@ class UnitTester {
       GravixLayerServerError,
       GravixLayerBadRequestError,
       GravixLayerConnectionError
-    } = require('../dist/index.js');
+    } = require('../dist/index.cjs');
 
     const requiredExports = [
       GravixLayer,
@@ -166,7 +166,7 @@ class UnitTester {
       GravixLayerServerError,
       GravixLayerBadRequestError,
       GravixLayerConnectionError
-    } = require('../dist/index.js');
+    } = require('../dist/index.cjs');
 
     // Test error inheritance
     const authError = new GravixLayerAuthenticationError('test');

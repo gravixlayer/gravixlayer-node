@@ -2,7 +2,7 @@
  * Mock API test for GravixLayer JavaScript SDK
  * Tests implementation without requiring real API calls
  */
-const { GravixLayer } = require('../dist/index.js');
+const { GravixLayer } = require('../dist/index.cjs');
 
 // Mock fetch to simulate API responses
 const originalFetch = global.fetch;

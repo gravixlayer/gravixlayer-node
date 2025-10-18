@@ -2,7 +2,7 @@
  * Comprehensive integration test for GravixLayer JavaScript SDK
  * Tests all endpoints and features
  */
-const { GravixLayer } = require('../dist/index.js');
+const { GravixLayer } = require('../dist/index.cjs');
 const fs = require('fs');
 const path = require('path');
 
