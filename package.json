@@ -1,6 +1,7 @@
 {
   "name": "gravixlayer",
   "version": "0.0.9",
+  "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -58,6 +59,7 @@
   "dependencies": {
     "commander": "^11.0.0",
     "form-data": "^4.0.0",
+    "gravixlayer": "^0.0.10",
     "node-fetch": "^2.7.0"
   },
   "devDependencies": {
