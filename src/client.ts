@@ -23,7 +23,6 @@ export interface GravixLayerOptions {
   maxRetries?: number;
   headers?: Record<string, string>;
   userAgent?: string;
-  // Industry standard compatibility parameters
   organization?: string;
   project?: string;
 }

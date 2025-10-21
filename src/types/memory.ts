@@ -53,22 +53,26 @@ export interface MemorySearchParams {
 export interface MemoryGetParams {
   memory_id: string;
   user_id: string;
+  indexName?: string;
 }
 
 export interface MemoryGetAllParams {
   user_id: string;
   limit?: number;
+  indexName?: string;
 }
 
 export interface MemoryUpdateParams {
   memory_id: string;
   user_id: string;
   data: string;
+  indexName?: string;
 }
 
 export interface MemoryDeleteParams {
   memory_id: string;
   user_id: string;
+  indexName?: string;
 }
 
 export interface MemoryDeleteAllParams {

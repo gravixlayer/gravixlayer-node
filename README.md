@@ -4,7 +4,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
-A comprehensive, industry-standard compatible JavaScript/TypeScript SDK for the GravixLayer API. Drop-in replacement for OpenAI SDK with enhanced features including file management, vector databases, memory systems, and more.
+A comprehensive, standard compatible JavaScriptt SDK for the GravixLayer API. Drop-in replacement for OpenAI SDK with enhanced features including file management, vector databases, memory systems, and more.
 
 ## Features
 

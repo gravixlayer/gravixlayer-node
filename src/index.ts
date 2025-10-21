@@ -1,6 +1,3 @@
-/**
- * GravixLayer JavaScript SDK - Industry Standard Compatible
- */
 
 import { GravixLayer } from './client';
 

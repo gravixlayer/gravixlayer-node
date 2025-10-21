@@ -77,21 +77,21 @@ export class Memory {
       metadata?: Record<string, any>;
       infer?: boolean;
       embeddingModel?: string;
-      databaseName?: string;
+      indexName?: string;
     } = {}
   ): Promise<MemoryResponse> {
-    const { metadata, infer = true, embeddingModel, databaseName } = options;
+    const { metadata, infer = true, embeddingModel, indexName } = options;
     
     // Handle conversation messages
     if (Array.isArray(messages)) {
-      return await this.addFromMessages(messages, user_id, metadata, infer, embeddingModel, databaseName);
+      return await this.addFromMessages(messages, user_id, metadata, infer, embeddingModel, indexName);
     }
 
     // Handle direct content
     const activeEmbeddingModel = embeddingModel || this.currentEmbeddingModel;
-    const targetDatabase = databaseName || this.currentIndexName;
+    const targetIndex = indexName || this.currentIndexName;
     
-    const indexId = await this.ensureSharedIndex(targetDatabase);
+    const indexId = await this.ensureSharedIndex(targetIndex);
     const vectorsClient = this.client.vectors.index(indexId);
     
     // Generate memory ID
@@ -103,7 +103,7 @@ export class Memory {
       memory_type: 'factual',
       content: messages as string,
       embedding_model: activeEmbeddingModel,
-      database_name: targetDatabase,
+      index_name: targetIndex,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       importance_score: 1.0,
@@ -134,14 +134,14 @@ export class Memory {
     metadata: Record<string, any> = {},
     infer: boolean = true,
     embeddingModel?: string,
-    databaseName?: string
+    indexName?: string
   ): Promise<MemoryResponse> {
     if (!infer) {
       // Store raw messages without inference
       const results = [];
       for (const message of messages) {
         if (message.content) {
-          const result = await this.add(message.content, user_id, { metadata, embeddingModel, databaseName });
+          const result = await this.add(message.content, user_id, { metadata, embeddingModel, indexName });
           results.push(...result.results);
         }
       }
@@ -154,7 +154,7 @@ export class Memory {
     
     const results = [];
     for (const memory of inferredMemories) {
-      const result = await this.add(memory, user_id, { metadata, embeddingModel, databaseName });
+      const result = await this.add(memory, user_id, { metadata, embeddingModel, indexName });
       results.push(...result.results);
     }
     
@@ -187,21 +187,24 @@ export class Memory {
       limit?: number;
       threshold?: number;
       embeddingModel?: string;
-      databaseName?: string;
+      indexName?: string;
     } = {}
   ): Promise<{ results: any[] }> {
-    const { limit = 100, threshold = 0.3, embeddingModel, databaseName } = options;
+    const { limit = 100, threshold = 0.3, embeddingModel, indexName } = options;
     const activeEmbeddingModel = embeddingModel || this.currentEmbeddingModel;
-    const targetDatabase = databaseName || this.currentIndexName;
+    const targetIndex = indexName || this.currentIndexName;
+    
+    // Validate limit parameter
+    const validLimit = Math.max(1, Math.min(1000, limit || 100));
     
     try {
-      const indexId = await this.ensureSharedIndex(targetDatabase);
+      const indexId = await this.ensureSharedIndex(targetIndex);
       const vectorsClient = this.client.vectors.index(indexId);
 
       const searchResults = await vectorsClient.searchText(
         query,
         activeEmbeddingModel,
-        limit,
+        validLimit,
         { user_id: user_id },
         true, // include_metadata
         false // include_values
@@ -229,16 +232,19 @@ export class Memory {
     }
   }
 
-  async getAll(user_id: string, limit: number = 100): Promise<{ results: any[] }> {
-    return await this.search('memory', user_id, { limit, threshold: 0.0 });
+  async getAll(user_id: string, options: { limit?: number; indexName?: string } = {}): Promise<{ results: any[] }> {
+    const { limit = 100, indexName } = options;
+    return await this.search('memory', user_id, { limit, threshold: 0.0, indexName });
   }
 
   /**
    * Get memory by ID
    */
-  async get(memory_id: string, user_id: string): Promise<any | null> {
+  async get(memory_id: string, user_id: string, options: { indexName?: string } = {}): Promise<any | null> {
     try {
-      const indexId = await this.ensureSharedIndex();
+      const { indexName } = options;
+      const targetIndex = indexName || this.currentIndexName;
+      const indexId = await this.ensureSharedIndex(targetIndex);
       const vectorsClient = this.client.vectors.index(indexId);
       
       const vector = await vectorsClient.get(memory_id);
@@ -263,12 +269,14 @@ export class Memory {
   /**
    * Update memory content
    */
-  async update(memory_id: string, user_id: string, data: string): Promise<{ message: string }> {
+  async update(memory_id: string, user_id: string, data: string, options: { indexName?: string } = {}): Promise<{ message: string }> {
     try {
-      const indexId = await this.ensureSharedIndex();
+      const { indexName } = options;
+      const targetIndex = indexName || this.currentIndexName;
+      const indexId = await this.ensureSharedIndex(targetIndex);
       
       // Get current memory and verify ownership
-      const currentMemory = await this.get(memory_id, user_id);
+      const currentMemory = await this.get(memory_id, user_id, options);
       if (!currentMemory) {
         return { message: `Memory ${memory_id} not found or update failed.` };
       }
@@ -298,12 +306,14 @@ export class Memory {
   /**
    * Delete memory by ID
    */
-  async delete(memory_id: string, user_id: string): Promise<{ message: string }> {
+  async delete(memory_id: string, user_id: string, options: { indexName?: string } = {}): Promise<{ message: string }> {
     try {
-      const indexId = await this.ensureSharedIndex();
+      const { indexName } = options;
+      const targetIndex = indexName || this.currentIndexName;
+      const indexId = await this.ensureSharedIndex(targetIndex);
       
       // Verify memory belongs to user
-      const memory = await this.get(memory_id, user_id);
+      const memory = await this.get(memory_id, user_id, options);
       if (!memory) {
         return { message: `Memory ${memory_id} not found or deletion failed.` };
       }
@@ -340,7 +350,7 @@ export class Memory {
 
     if (indexName) {
       this.currentIndexName = indexName;
-      console.log(`🔄 Switched to database: ${indexName}`);
+      console.log(`🔄 Switched to index: ${indexName}`);
     }
 
     if (cloudProvider || region) {
@@ -378,25 +388,25 @@ export class Memory {
     console.log('🔄 Reset to default configuration');
   }
 
-  async listAvailableDatabases(): Promise<string[]> {
+  async listAvailableIndexes(): Promise<string[]> {
     try {
       const indexList = await this.client._makeRequest('GET', 'https://api.gravixlayer.com/v1/vectors/indexes');
       const indexData = await indexList.json();
-      const databaseNames: string[] = [];
+      const indexNames: string[] = [];
       
       for (const idx of indexData.indexes || []) {
         if (idx.metadata && idx.metadata.type === 'unified_memory_store') {
-          databaseNames.push(idx.name);
+          indexNames.push(idx.name);
         } else if (['gravixlayer_memories', 'user_preferences', 'conversation_history'].includes(idx.name)) {
-          databaseNames.push(idx.name);
-        } else if (!databaseNames.includes(idx.name)) {
-          databaseNames.push(idx.name);
+          indexNames.push(idx.name);
+        } else if (!indexNames.includes(idx.name)) {
+          indexNames.push(idx.name);
         }
       }
       
-      return databaseNames.sort();
+      return indexNames.sort();
     } catch (error) {
-      console.error('Error listing databases:', error instanceof Error ? error.message : String(error));
+      console.error('Error listing indexes:', error instanceof Error ? error.message : String(error));
       return ['gravixlayer_memories'];
     }
   }
@@ -410,7 +420,7 @@ export class Memory {
     limit: number = 50
   ): Promise<MemoryEntry[]> {
     try {
-      const allMemories = await this.getAll(user_id, 1000);
+      const allMemories = await this.getAll(user_id, { limit: 1000 });
       
       return allMemories.results
         .filter(memory => memory.memory_type === memory_type)
@@ -460,7 +470,7 @@ export class Memory {
     ascending: boolean = false
   ): Promise<MemoryEntry[]> {
     try {
-      const allMemories = await this.getAll(user_id, limit);
+      const allMemories = await this.getAll(user_id, { limit });
       
       // Sort memories based on the specified field
       allMemories.results.sort((a, b) => {
@@ -506,7 +516,7 @@ export class Memory {
    */
   async getStats(user_id: string): Promise<any> {
     try {
-      const allMemories = await this.getAll(user_id, 1000);
+      const allMemories = await this.getAll(user_id, { limit: 1000 });
       
       const stats = {
         total_memories: allMemories.results.length,
@@ -560,8 +570,8 @@ export class Memory {
     });
   }
 
-  private async ensureSharedIndex(targetDatabase?: string): Promise<string> {
-    const targetIndexName = targetDatabase || this.currentIndexName;
+  private async ensureSharedIndex(targetIndex?: string): Promise<string> {
+    const targetIndexName = targetIndex || this.currentIndexName;
     
     // Check cache first
     if (this.indexCache[targetIndexName]) {
