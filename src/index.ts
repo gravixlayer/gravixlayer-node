@@ -3,6 +3,7 @@ import { GravixLayer } from './client';
 
 export { GravixLayer, type GravixLayerOptions } from './client';
 export { Memory } from './resources/memory/memory';
+export { SyncMemory } from './resources/memory/sync-memory';
 export { AsyncGravixLayer, type AsyncGravixLayerOptions } from './async-client';
 
 // Chat types

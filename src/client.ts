@@ -15,6 +15,7 @@ import { Accelerators } from './resources/accelerators';
 import { Files } from './resources/files';
 import { VectorDatabase } from './resources/vectors/main';
 import { Memory } from './resources/memory/memory';
+import { SyncMemory } from './resources/memory/sync-memory';
 
 export interface GravixLayerOptions {
   apiKey?: string;
@@ -45,6 +46,7 @@ export class GravixLayer {
   public files: Files;
   public vectors: VectorDatabase;
   public memory: Memory;
+  public syncMemory: SyncMemory;
 
   constructor(options: GravixLayerOptions = {}) {
     this.apiKey = options.apiKey || process.env.GRAVIXLAYER_API_KEY || '';
@@ -77,6 +79,7 @@ export class GravixLayer {
     this.files = new Files(this);
     this.vectors = new VectorDatabase(this);
     this.memory = new Memory(this);
+    this.syncMemory = new SyncMemory(this);
   }
 
   async _makeRequest(

@@ -3,6 +3,7 @@
  */
 
 export { Memory } from './memory';
+export { SyncMemory } from './sync-memory';
 export type {
   MemoryType,
   MemoryEntry,

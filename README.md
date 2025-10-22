@@ -217,7 +217,9 @@ results.hits.forEach(hit => {
 
 ### Memory Management
 
-Build intelligent applications that remember user preferences and context across conversations.
+Build intelligent applications that remember user preferences and context across conversations. GravixLayer provides both asynchronous and synchronous memory APIs for different use cases.
+
+#### Asynchronous Memory (Recommended)
 
 ```javascript
 const addResult = await client.memory.add({
@@ -261,8 +263,94 @@ await client.memory.delete({
 });
 ```
 
+#### Synchronous Memory
+
+For applications that require synchronous operations or compatibility with non-async environments:
+
+```javascript
+// Access synchronous memory API
+const syncMemory = client.syncMemory;
+
+// Add memories synchronously
+const result = syncMemory.add("I love pizza and Italian food", "user-123");
+console.log(`Added memory: ${result.results[0].memory}`);
+
+// Search memories synchronously
+const memories = syncMemory.search("food preferences", "user-123", 10);
+console.log(`Found ${memories.results.length} memories`);
+
+// Get all memories synchronously
+const allMemories = syncMemory.getAll("user-123", 50);
+console.log(`Total memories: ${allMemories.results.length}`);
+
+// Configuration management (works for both async and sync)
+syncMemory.switchConfiguration({
+  embeddingModel: "microsoft/multilingual-e5-large",
+  indexName: "custom_memories",
+  cloudProvider: "AWS",
+  region: "us-west-2"
+});
+
+const config = syncMemory.getCurrentConfiguration();
+console.log(`Current embedding model: ${config.embedding_model}`);
+
+// Reset to defaults
+syncMemory.resetToDefaults();
+```
+
+#### Advanced Memory Operations
+
+Both async and sync memory support advanced operations:
+
+```javascript
+// Direct memory API (async example)
+const memoryEntry = await client.memory.addMemory(
+  "User prefers dark mode UI",
+  "user-123",
+  MemoryType.FACTUAL,
+  { category: "ui_preferences" }
+);
+
+// Get memories by type
+const factualMemories = await client.memory.getMemoriesByType(
+  "user-123", 
+  MemoryType.FACTUAL, 
+  20
+);
+
+// Get memory statistics
+const stats = await client.memory.getStats("user-123");
+console.log(`Total: ${stats.total_memories}, Factual: ${stats.factual_count}`);
+
+// Cleanup expired working memory
+const cleanedCount = await client.memory.cleanupWorkingMemory("user-123");
+console.log(`Cleaned up ${cleanedCount} expired memories`);
+
+// List all memories with sorting
+const sortedMemories = await client.memory.listAllMemories(
+  "user-123",
+  100,
+  "created_at",
+  false // descending
+);
+```
+
 **Memory types**: Factual, episodic, working, semantic  
-**Features**: AI inference, semantic search, user isolation
+**Features**: AI inference, semantic search, user isolation, configuration management  
+**APIs**: Both asynchronous and synchronous support
+
+#### Choosing Between Async and Sync Memory
+
+| Feature              | Async Memory (`client.memory`) | Sync Memory (`client.syncMemory`)      |
+| -------------------- | ------------------------------ | -------------------------------------- |
+| **Performance**      | Full network operations        | Simplified operations for testing      |
+| **Use Case**         | Production applications        | Testing, compatibility, simple scripts |
+| **API Calls**        | Real HTTP requests             | Logging-based simulation               |
+| **Configuration**    | Dynamic per-operation          | Global configuration only              |
+| **Index Management** | Full index listing/switching   | Basic index switching                  |
+| **Best For**         | Web apps, servers, production  | Scripts, testing, legacy compatibility |
+
+**Recommendation**: Use async memory (`client.memory`) for production applications. Use sync memory (`client.syncMemory`) for testing, simple scripts, or when working in environments that don't support async/await.
 
 ###  Deployments
 
@@ -352,13 +440,26 @@ gravixlayer files delete file-abc123
 
 ### Memory Management
 ```bash
+# Add memories
 gravixlayer memory add user-123 --message "I'm a React developer who loves TypeScript"
 
+# Search memories
 gravixlayer memory search user-123 --query "development preferences" --limit 5
 
+# List and manage memories
 gravixlayer memory list user-123 --limit 10
 gravixlayer memory update user-123 memory-abc123 --data "Updated preference"
 gravixlayer memory delete user-123 memory-abc123
+
+# Configuration management
+gravixlayer memory config --embedding-model "microsoft/multilingual-e5-large"
+gravixlayer memory config --index-name "custom_memories" --cloud-provider "AWS"
+gravixlayer memory config --reset-defaults
+
+# Advanced operations
+gravixlayer memory stats user-123
+gravixlayer memory cleanup user-123 --type working
+gravixlayer memory list-indexes
 ```
 
 ### Vector Database
@@ -436,11 +537,14 @@ Full TypeScript support with comprehensive type definitions and IntelliSense.
 ```typescript
 import { 
   GravixLayer, 
+  SyncMemory,
   ChatCompletion, 
   ChatCompletionCreateParams,
   FileObject,
   VectorIndex,
-  MemorySearchResult
+  MemorySearchResult,
+  MemoryType,
+  MemoryEntry
 } from 'gravixlayer';
 
 const client = new GravixLayer({
@@ -474,6 +578,18 @@ const memories: MemorySearchResult = await client.memory.search({
   user_id: "user-123",
   limit: 10
 });
+
+// Synchronous memory with TypeScript
+const syncMemory: SyncMemory = client.syncMemory;
+const syncResult = syncMemory.add("User prefers TypeScript", "user-123");
+const config = syncMemory.getCurrentConfiguration();
+
+// Memory types and entries
+const memoryEntry: MemoryEntry = syncMemory.addMemory(
+  "User loves React development",
+  "user-123",
+  MemoryType.FACTUAL
+);
 ```
 
 
