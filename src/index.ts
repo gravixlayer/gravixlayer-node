@@ -49,9 +49,6 @@ export type {
 // Files types
 export type {
   FileObject,
-  FileUploadResponse,
-  FileListResponse,
-  FileDeleteResponse,
   FileCreateParams,
   FilePurpose,
 } from './types/files';
@@ -100,6 +97,34 @@ export type {
   MemoryGetAllResponse,
   MemoryOperationResponse,
 } from './types/memory';
+
+// Sandbox types
+export type {
+  Sandbox as SandboxType,
+  SandboxCreate,
+  SandboxList,
+  SandboxMetrics,
+  SandboxTimeoutResponse,
+  SandboxHostURL,
+  FileReadResponse,
+  FileWriteResponse,
+  FileInfo,
+  FileListResponse,
+  FileDeleteResponse,
+  DirectoryCreateResponse,
+  FileUploadResponse,
+  CommandRunResponse,
+  CodeRunResponse,
+  CodeContext,
+  CodeContextDeleteResponse,
+  Template,
+  TemplateList,
+  SandboxKillResponse,
+  Execution,
+} from './types/sandbox';
+
+// Sandbox classes
+export { Sandbox, SandboxResource } from './resources/sandbox';
 
 // Exception types
 export {

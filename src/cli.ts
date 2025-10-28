@@ -171,7 +171,7 @@ async function handleChatCommands(options: ChatOptions) {
       }
     }
   } catch (error) {
-    console.error(`❌ Error: ${error}`);
+    console.error(`Error: ${error}`);
     process.exit(1);
   }
 }
@@ -192,7 +192,7 @@ async function waitForDeploymentReady(client: GravixLayer, deploymentId: string,
 
         if (['running', 'ready', 'active'].includes(status)) {
           console.log();
-          console.log('🚀 Deployment is now ready!');
+          console.log('Deployment is now ready!');
           console.log(`Deployment ID: ${currentDeployment.deployment_id}`);
           console.log(`Deployment Name: ${currentDeployment.deployment_name}`);
           console.log(`Status: ${currentDeployment.status}`);
@@ -201,14 +201,14 @@ async function waitForDeploymentReady(client: GravixLayer, deploymentId: string,
           return true;
         } else if (['failed', 'error', 'stopped'].includes(status)) {
           console.log();
-          console.log(`❌ Deployment failed with status: ${currentDeployment.status}`);
+          console.log(`Deployment failed with status: ${currentDeployment.status}`);
           return true;
         } else {
           // Still creating/pending
           return false;
         }
       } else {
-        console.log('   ❌ Deployment not found');
+        console.log('   Deployment not found');
         return true;
       }
     } catch (error) {
@@ -228,7 +228,7 @@ async function waitForDeploymentReady(client: GravixLayer, deploymentId: string,
   process.on('SIGINT', () => {
     clearInterval(interval);
     console.log();
-    console.log('⏹️  Monitoring stopped. Deployment continues in background.');
+    console.log('Monitoring stopped. Deployment continues in background.');
     console.log('   Check status with: gravixlayer deployments list');
     process.exit(0);
   });
@@ -1204,6 +1204,411 @@ memoryCmd
       console.log(`Message: ${result.message}`);
     } catch (error) {
       console.error(`❌ Error deleting all memories: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Sandbox command
+const sandboxCmd = program
+  .command('sandbox')
+  .description('Sandbox management');
+
+// Create sandbox
+sandboxCmd
+  .command('create')
+  .description('Create a new sandbox')
+  .option('--api-key <key>', 'API key')
+  .requiredOption('--provider <provider>', 'Cloud provider (gravix, aws, gcp, azure)')
+  .requiredOption('--region <region>', 'Cloud region')
+  .option('--template <template>', 'Template name', 'python-base-v1')
+  .option('--timeout <timeout>', 'Timeout in seconds', parseInt, 300)
+  .option('--env-vars <envVars>', 'Environment variables as JSON')
+  .option('--metadata <metadata>', 'Metadata as JSON')
+  .action(async (options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      const createOptions: any = {
+        provider: options.provider,
+        region: options.region,
+        template: options.template,
+        timeout: options.timeout
+      };
+
+      if (options.envVars) {
+        createOptions.env_vars = JSON.parse(options.envVars);
+      }
+
+      if (options.metadata) {
+        createOptions.metadata = JSON.parse(options.metadata);
+      }
+
+      const sandbox = await client.sandbox.sandboxes.create(createOptions);
+      
+      console.log(`Created sandbox: ${sandbox.sandbox_id}`);
+      console.log(`Status: ${sandbox.status}`);
+      console.log(`Template: ${sandbox.template}`);
+      console.log(`Started: ${sandbox.started_at}`);
+      console.log(`Timeout: ${sandbox.timeout_at}`);
+    } catch (error) {
+      console.error(`ERROR: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// List sandboxes
+sandboxCmd
+  .command('list')
+  .description('List all sandboxes')
+  .option('--api-key <key>', 'API key')
+  .option('--limit <limit>', 'Maximum number of results', parseInt, 100)
+  .option('--offset <offset>', 'Number of results to skip', parseInt, 0)
+  .option('--json', 'Output as JSON')
+  .action(async (options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      const sandboxes = await client.sandbox.sandboxes.list({
+        limit: options.limit,
+        offset: options.offset
+      });
+
+      if (options.json) {
+        console.log(JSON.stringify(sandboxes, null, 2));
+      } else {
+        console.log(`Found ${sandboxes.total} sandbox(es):`);
+        console.log();
+        
+        for (const sandbox of sandboxes.sandboxes) {
+          console.log(`ID: ${sandbox.sandbox_id}`);
+          console.log(`Status: ${sandbox.status}`);
+          console.log(`Template: ${sandbox.template}`);
+          console.log(`Started: ${sandbox.started_at}`);
+          console.log(`Timeout: ${sandbox.timeout_at}`);
+          if (sandbox.metadata && Object.keys(sandbox.metadata).length > 0) {
+            console.log(`Metadata: ${JSON.stringify(sandbox.metadata)}`);
+          }
+          console.log();
+        }
+      }
+    } catch (error) {
+      console.error(`ERROR: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Get sandbox info
+sandboxCmd
+  .command('get <sandboxId>')
+  .description('Get sandbox information')
+  .option('--api-key <key>', 'API key')
+  .option('--json', 'Output as JSON')
+  .action(async (sandboxId, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      const sandbox = await client.sandbox.sandboxes.get(sandboxId);
+      
+      if (options.json) {
+        console.log(JSON.stringify(sandbox, null, 2));
+      } else {
+        console.log(`Sandbox: ${sandbox.sandbox_id}`);
+        console.log(`Status: ${sandbox.status}`);
+        console.log(`Template: ${sandbox.template}`);
+        console.log(`Started: ${sandbox.started_at}`);
+        console.log(`Timeout: ${sandbox.timeout_at}`);
+        if (sandbox.cpu_count) console.log(`CPU: ${sandbox.cpu_count} vCPU`);
+        if (sandbox.memory_mb) console.log(`Memory: ${sandbox.memory_mb}MB`);
+        if (sandbox.metadata && Object.keys(sandbox.metadata).length > 0) {
+          console.log(`Metadata: ${JSON.stringify(sandbox.metadata)}`);
+        }
+      }
+    } catch (error) {
+      console.error(`ERROR: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Kill sandbox
+sandboxCmd
+  .command('kill <sandboxId>')
+  .description('Terminate a sandbox')
+  .option('--api-key <key>', 'API key')
+  .action(async (sandboxId, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      const result = await client.sandbox.sandboxes.kill(sandboxId);
+      console.log(`${result.message}`);
+    } catch (error) {
+      console.error(`ERROR: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Run command
+sandboxCmd
+  .command('run <sandboxId> <command>')
+  .description('Execute a command in sandbox')
+  .option('--api-key <key>', 'API key')
+  .option('--args <args...>', 'Command arguments')
+  .option('--working-dir <workingDir>', 'Working directory')
+  .option('--timeout <timeout>', 'Timeout in milliseconds', parseInt)
+  .action(async (sandboxId, command, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      const result = await client.sandbox.sandboxes.runCommand(
+        sandboxId,
+        command,
+        {
+          args: options.args || [],
+          working_dir: options.workingDir,
+          timeout: options.timeout
+        }
+      );
+      
+      console.log(`Command executed (exit code: ${result.exit_code})`);
+      console.log(`Duration: ${result.duration_ms}ms`);
+      console.log(`Success: ${result.success}`);
+      
+      if (result.stdout) {
+        console.log('\nSTDOUT:');
+        console.log(result.stdout);
+      }
+      
+      if (result.stderr) {
+        console.log('\nSTDERR:');
+        console.log(result.stderr);
+      }
+      
+      if (result.error) {
+        console.log(`\nERROR: ${result.error}`);
+      }
+    } catch (error) {
+      console.error(`ERROR: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Run code
+sandboxCmd
+  .command('code <sandboxId> <code>')
+  .description('Execute code in sandbox')
+  .option('--api-key <key>', 'API key')
+  .option('--language <language>', 'Programming language', 'python')
+  .option('--context-id <contextId>', 'Code execution context ID')
+  .action(async (sandboxId, code, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      const result = await client.sandbox.sandboxes.runCode(
+        sandboxId,
+        code,
+        {
+          language: options.language,
+          context_id: options.contextId
+        }
+      );
+      
+      if (result.logs?.stdout && result.logs.stdout.length > 0) {
+        console.log('\nOUTPUT:');
+        for (const line of result.logs.stdout) {
+          console.log(line);
+        }
+      }
+      
+      if (result.logs?.stderr && result.logs.stderr.length > 0) {
+        console.log('\nSTDERR:');
+        for (const line of result.logs.stderr) {
+          console.log(line);
+        }
+      }
+      
+      if (result.error) {
+        console.log(`\nERROR: ${JSON.stringify(result.error)}`);
+      }
+    } catch (error) {
+      console.error(`ERROR: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// File operations
+const sandboxFileCmd = sandboxCmd
+  .command('file')
+  .description('File operations');
+
+// Read file
+sandboxFileCmd
+  .command('read <sandboxId> <path>')
+  .description('Read file from sandbox')
+  .option('--api-key <key>', 'API key')
+  .action(async (sandboxId, path, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      const result = await client.sandbox.sandboxes.readFile(sandboxId, path);
+      const filePath = result.path || path;
+      const fileSize = result.size || (result.content ? result.content.length : 0);
+      console.log(`File: ${filePath} (${fileSize} bytes)`);
+      console.log('='.repeat(50));
+      console.log(result.content);
+    } catch (error) {
+      console.error(`ERROR: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Write file
+sandboxFileCmd
+  .command('write <sandboxId> <path> <content>')
+  .description('Write file to sandbox')
+  .option('--api-key <key>', 'API key')
+  .action(async (sandboxId, path, content, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      const result = await client.sandbox.sandboxes.writeFile(sandboxId, path, content);
+      console.log(`${result.message}`);
+      const filePath = result.path || path;
+      const bytesWritten = result.bytes_written || content.length;
+      console.log(`Path: ${filePath}`);
+      console.log(`Bytes written: ${bytesWritten}`);
+    } catch (error) {
+      console.error(`ERROR: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// List files
+sandboxFileCmd
+  .command('list <sandboxId> <path>')
+  .description('List files in sandbox')
+  .option('--api-key <key>', 'API key')
+  .action(async (sandboxId, path, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      const result = await client.sandbox.sandboxes.listFiles(sandboxId, path);
+      console.log(`Files in ${path}:`);
+      console.log();
+      
+      for (const fileInfo of result.files) {
+        if (fileInfo.is_dir) {
+          console.log(`DIR  ${fileInfo.name}/`);
+        } else {
+          console.log(`FILE ${fileInfo.name} (${fileInfo.size} bytes)`);
+        }
+        console.log(`     Modified: ${fileInfo.modified_at}`);
+        console.log();
+      }
+    } catch (error) {
+      console.error(`ERROR: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Delete file
+sandboxFileCmd
+  .command('delete <sandboxId> <path>')
+  .description('Delete file from sandbox')
+  .option('--api-key <key>', 'API key')
+  .action(async (sandboxId, path, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      const result = await client.sandbox.sandboxes.deleteFile(sandboxId, path);
+      console.log(`${result.message}`);
+      const filePath = result.path || path;
+      console.log(`Path: ${filePath}`);
+    } catch (error) {
+      console.error(`ERROR: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Make directory
+sandboxFileCmd
+  .command('mkdir <sandboxId> <path>')
+  .description('Create directory in sandbox')
+  .option('--api-key <key>', 'API key')
+  .action(async (sandboxId, path, options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      const result = await client.sandbox.sandboxes.makeDirectory(sandboxId, path);
+      console.log(`${result.message}`);
+      const dirPath = result.path || path;
+      console.log(`Path: ${dirPath}`);
+    } catch (error) {
+      console.error(`ERROR: ${error}`);
+      process.exit(1);
+    }
+  });
+
+// Template commands
+const sandboxTemplateCmd = sandboxCmd
+  .command('template')
+  .description('Template management');
+
+// List templates
+sandboxTemplateCmd
+  .command('list')
+  .description('List available sandbox templates')
+  .option('--api-key <key>', 'API key')
+  .option('--limit <limit>', 'Maximum number of results', parseInt, 100)
+  .option('--offset <offset>', 'Number of results to skip', parseInt, 0)
+  .option('--json', 'Output as JSON')
+  .action(async (options) => {
+    const client = new GravixLayer({
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    });
+
+    try {
+      const templates = await client.sandbox.templates.list({
+        limit: options.limit,
+        offset: options.offset
+      });
+
+      if (options.json) {
+        console.log(JSON.stringify(templates, null, 2));
+      } else {
+        console.log(`Available templates:`);
+        console.log();
+        
+        for (const template of templates.templates) {
+          console.log(`Name: ${template.name}`);
+          console.log(`Description: ${template.description}`);
+          console.log(`Resources: ${template.vcpu_count} vCPU, ${template.memory_mb}MB RAM, ${template.disk_size_mb}MB disk`);
+          console.log(`Created: ${template.created_at}`);
+          console.log();
+        }
+      }
+    } catch (error) {
+      console.error(`ERROR: ${error}`);
       process.exit(1);
     }
   });
