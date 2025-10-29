@@ -46,8 +46,8 @@ export class GravixLayer {
   public accelerators: Accelerators;
   public files: Files;
   public vectors: VectorDatabase;
-  public memory: Memory;
-  public syncMemory: SyncMemory;
+  // Memory must be explicitly initialized - no defaults
+  // Example: const memory = new Memory(client, embeddingModel, inferenceModel, indexName, cloudProvider, region, deleteProtection)
   public sandbox: SandboxResource;
 
   constructor(options: GravixLayerOptions = {}) {
@@ -80,8 +80,8 @@ export class GravixLayer {
     this.accelerators = new Accelerators(this);
     this.files = new Files(this);
     this.vectors = new VectorDatabase(this);
-    this.memory = new Memory(this);
-    this.syncMemory = new SyncMemory(this);
+    // Memory requires explicit initialization - no defaults
+    // Users must call: new Memory(client, embeddingModel, inferenceModel, indexName, cloudProvider, region, deleteProtection)
     this.sandbox = new SandboxResource(this);
   }
 

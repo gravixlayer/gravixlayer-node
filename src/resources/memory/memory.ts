@@ -30,18 +30,22 @@ export class Memory {
   private indexCache: Record<string, string> = {};
   private modelDimensions: Record<string, number>;
 
+  private deleteProtection: boolean;
+
   constructor(
     client: any,
-    embeddingModel: string = 'baai/bge-large-en-v1.5',
-    inferenceModel: string = 'mistralai/mistral-nemo-instruct-2407',
-    indexName: string = 'gravixlayer_memories',
-    cloudProvider: string = 'AWS',
-    region: string = 'us-east-1'
+    embeddingModel: string,
+    inferenceModel: string,
+    indexName: string,
+    cloudProvider: string,
+    region: string,
+    deleteProtection: boolean
   ) {
     this.client = client;
     this.currentEmbeddingModel = embeddingModel;
     this.currentInferenceModel = inferenceModel;
     this.currentIndexName = indexName;
+    this.deleteProtection = deleteProtection;
     this.currentCloudConfig = {
       cloud_provider: cloudProvider,
       region: region,
@@ -73,18 +77,19 @@ export class Memory {
   async add(
     messages: string | Array<{ role: string; content: string }>,
     user_id: string,
-    options: {
+    options?: {
       metadata?: Record<string, any>;
       infer?: boolean;
       embeddingModel?: string;
       indexName?: string;
-    } = {}
+    }
   ): Promise<MemoryResponse> {
-    const { metadata, infer = true, embeddingModel, indexName } = options;
+    const { metadata, infer, embeddingModel, indexName } = options || {};
+    const shouldInfer = infer !== undefined ? infer : true;
     
     // Handle conversation messages
     if (Array.isArray(messages)) {
-      return await this.addFromMessages(messages, user_id, metadata, infer, embeddingModel, indexName);
+      return await this.addFromMessages(messages, user_id, metadata, shouldInfer, embeddingModel, indexName);
     }
 
     // Handle direct content
@@ -131,17 +136,20 @@ export class Memory {
   private async addFromMessages(
     messages: Array<{ role: string; content: string }>,
     user_id: string,
-    metadata: Record<string, any> = {},
-    infer: boolean = true,
+    metadata?: Record<string, any>,
+    infer?: boolean,
     embeddingModel?: string,
     indexName?: string
   ): Promise<MemoryResponse> {
-    if (!infer) {
+    const shouldInfer = infer !== undefined ? infer : true;
+    const memoryMetadata = metadata || {};
+    
+    if (!shouldInfer) {
       // Store raw messages without inference
       const results = [];
       for (const message of messages) {
         if (message.content) {
-          const result = await this.add(message.content, user_id, { metadata, embeddingModel, indexName });
+          const result = await this.add(message.content, user_id, { metadata: memoryMetadata, embeddingModel, indexName });
           results.push(...result.results);
         }
       }
@@ -154,7 +162,7 @@ export class Memory {
     
     const results = [];
     for (const memory of inferredMemories) {
-      const result = await this.add(memory, user_id, { metadata, embeddingModel, indexName });
+      const result = await this.add(memory, user_id, { metadata: memoryMetadata, embeddingModel, indexName });
       results.push(...result.results);
     }
     
@@ -183,26 +191,31 @@ export class Memory {
   async search(
     query: string,
     user_id: string,
-    options: {
+    options?: {
       limit?: number;
       threshold?: number;
       embeddingModel?: string;
       indexName?: string;
-    } = {}
+    }
   ): Promise<{ results: any[] }> {
-    const { limit = 100, threshold = 0.3, embeddingModel, indexName } = options;
+    const { limit, threshold, embeddingModel, indexName } = options || {};
+    const searchLimit = limit !== undefined ? limit : 100;
+    const searchThreshold = threshold !== undefined ? threshold : 0.3;
     const activeEmbeddingModel = embeddingModel || this.currentEmbeddingModel;
     const targetIndex = indexName || this.currentIndexName;
     
     // Validate limit parameter
-    const validLimit = Math.max(1, Math.min(1000, limit || 100));
+    const validLimit = Math.max(1, Math.min(1000, searchLimit));
     
     try {
       const indexId = await this.ensureSharedIndex(targetIndex);
       const vectorsClient = this.client.vectors.index(indexId);
 
+      // Handle empty query - use generic query for "get all" behavior
+      const searchQuery = query.trim() || 'the';
+
       const searchResults = await vectorsClient.searchText(
-        query,
+        searchQuery,
         activeEmbeddingModel,
         validLimit,
         { user_id: user_id },
@@ -212,7 +225,16 @@ export class Memory {
 
       const results = [];
       for (const hit of searchResults.hits || []) {
-        if (hit.metadata?.user_id === user_id && hit.score >= threshold) {
+        // Double-check user_id filtering (critical security check)
+        if (hit.metadata?.user_id !== user_id) {
+          continue;
+        }
+
+        // For empty queries or very low relevance thresholds, include all results
+        if (searchThreshold <= 0.0 || !query.trim() || hit.score >= searchThreshold) {
+          // Update access count
+          await this.incrementAccessCount(vectorsClient, hit.id);
+
           results.push({
             id: hit.id,
             memory: hit.metadata?.content || '',
@@ -232,17 +254,18 @@ export class Memory {
     }
   }
 
-  async getAll(user_id: string, options: { limit?: number; indexName?: string } = {}): Promise<{ results: any[] }> {
-    const { limit = 100, indexName } = options;
-    return await this.search('memory', user_id, { limit, threshold: 0.0, indexName });
+  async getAll(user_id: string, options?: { limit?: number; indexName?: string }): Promise<{ results: any[] }> {
+    const { limit, indexName } = options || {};
+    const searchLimit = limit !== undefined ? limit : 100;
+    return await this.search('memory', user_id, { limit: searchLimit, threshold: 0.0, indexName });
   }
 
   /**
    * Get memory by ID
    */
-  async get(memory_id: string, user_id: string, options: { indexName?: string } = {}): Promise<any | null> {
+  async get(memory_id: string, user_id: string, options?: { indexName?: string }): Promise<any | null> {
     try {
-      const { indexName } = options;
+      const { indexName } = options || {};
       const targetIndex = indexName || this.currentIndexName;
       const indexId = await this.ensureSharedIndex(targetIndex);
       const vectorsClient = this.client.vectors.index(indexId);
@@ -269,14 +292,25 @@ export class Memory {
   /**
    * Update memory content
    */
-  async update(memory_id: string, user_id: string, data: string, options: { indexName?: string } = {}): Promise<{ message: string }> {
+  async update(
+    memory_id: string,
+    user_id: string,
+    data: string,
+    options?: {
+      metadata?: Record<string, any>;
+      importanceScore?: number;
+      embeddingModel?: string;
+      indexName?: string;
+    }
+  ): Promise<{ message: string }> {
     try {
-      const { indexName } = options;
+      const { metadata, importanceScore, embeddingModel, indexName } = options || {};
       const targetIndex = indexName || this.currentIndexName;
+      const activeEmbeddingModel = embeddingModel || this.currentEmbeddingModel;
       const indexId = await this.ensureSharedIndex(targetIndex);
       
       // Get current memory and verify ownership
-      const currentMemory = await this.get(memory_id, user_id, options);
+      const currentMemory = await this.get(memory_id, user_id, { indexName });
       if (!currentMemory) {
         return { message: `Memory ${memory_id} not found or update failed.` };
       }
@@ -285,14 +319,23 @@ export class Memory {
       const updatedMetadata = {
         ...currentMemory.metadata,
         content: data,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        embedding_model: activeEmbeddingModel
       };
+
+      if (metadata) {
+        Object.assign(updatedMetadata, metadata);
+      }
+
+      if (importanceScore !== undefined) {
+        updatedMetadata.importance_score = importanceScore;
+      }
 
       // Re-embed with new content
       const vectorsClient = this.client.vectors.index(indexId);
       await vectorsClient.upsertText(
         data,
-        this.currentEmbeddingModel,
+        activeEmbeddingModel,
         memory_id,
         updatedMetadata
       );
@@ -306,9 +349,9 @@ export class Memory {
   /**
    * Delete memory by ID
    */
-  async delete(memory_id: string, user_id: string, options: { indexName?: string } = {}): Promise<{ message: string }> {
+  async delete(memory_id: string, user_id: string, options?: { indexName?: string }): Promise<{ message: string }> {
     try {
-      const { indexName } = options;
+      const { indexName } = options || {};
       const targetIndex = indexName || this.currentIndexName;
       const indexId = await this.ensureSharedIndex(targetIndex);
       
@@ -327,13 +370,17 @@ export class Memory {
   }
 
   // Dynamic Configuration Methods
-  switchConfiguration(options: {
+  switchConfiguration(options?: {
     embeddingModel?: string;
     inferenceModel?: string;
     indexName?: string;
     cloudProvider?: string;
     region?: string;
-  } = {}): void {
+  }): void {
+    if (!options) {
+      console.log('⚠️  No configuration options provided');
+      return;
+    }
     const { embeddingModel, inferenceModel, indexName, cloudProvider, region } = options;
 
     if (embeddingModel) {
@@ -375,17 +422,24 @@ export class Memory {
     };
   }
 
-  resetToDefaults(): void {
-    this.currentEmbeddingModel = 'baai/bge-large-en-v1.5';
-    this.currentInferenceModel = 'mistralai/mistral-nemo-instruct-2407';
-    this.currentIndexName = 'gravixlayer_memories';
-    this.currentCloudConfig = {
-      cloud_provider: 'AWS',
-      region: 'us-east-1',
-      index_type: 'serverless'
-    };
-    this.embeddingDimension = this.getEmbeddingDimension(this.currentEmbeddingModel);
-    console.log('🔄 Reset to default configuration');
+  // resetToDefaults removed - no defaults, all parameters must be provided by user
+
+  /**
+   * Switch to a different memory index
+   */
+  async switchIndex(indexName: string): Promise<boolean> {
+    try {
+      // Ensure the index exists (will create if needed)
+      const indexId = await this.ensureSharedIndex(indexName);
+      
+      // Update current configuration
+      this.currentIndexName = indexName;
+      console.log(`✅ Switched to index: ${indexName} (ID: ${indexId})`);
+      return true;
+    } catch (error) {
+      console.error(`❌ Failed to switch to index '${indexName}':`, error);
+      return false;
+    }
   }
 
   async listAvailableIndexes(): Promise<string[]> {
@@ -417,10 +471,10 @@ export class Memory {
   async getMemoriesByType(
     user_id: string,
     memory_type: MemoryType,
-    limit: number = 50
+    limit: number
   ): Promise<MemoryEntry[]> {
     try {
-      const allMemories = await this.getAll(user_id, { limit: 1000 });
+      const allMemories = await this.getAll(user_id, { limit: limit || 1000 });
       
       return allMemories.results
         .filter(memory => memory.memory_type === memory_type)
@@ -436,7 +490,7 @@ export class Memory {
    */
   async cleanupWorkingMemory(user_id: string): Promise<number> {
     try {
-      const workingMemories = await this.getMemoriesByType(user_id, MemoryType.WORKING);
+      const workingMemories = await this.getMemoriesByType(user_id, MemoryType.WORKING, 1000);
       
       let cleanedCount = 0;
       const cutoffTime = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2 hours ago
@@ -465,9 +519,9 @@ export class Memory {
    */
   async listAllMemories(
     user_id: string,
-    limit: number = 100,
-    sort_by: string = 'created_at',
-    ascending: boolean = false
+    limit: number,
+    sort_by: string,
+    ascending: boolean
   ): Promise<MemoryEntry[]> {
     try {
       const allMemories = await this.getAll(user_id, { limit });
@@ -562,6 +616,23 @@ export class Memory {
     }
   }
 
+  /**
+   * Increment access count for a memory (internal method)
+   */
+  private async incrementAccessCount(vectorsClient: any, memoryId: string): Promise<void> {
+    try {
+      const vector = await vectorsClient.get(memoryId);
+      const currentCount = vector.metadata?.access_count || 0;
+      // CRITICAL FIX: Update the entire metadata to preserve all fields
+      const updatedMetadata = { ...vector.metadata };
+      updatedMetadata.access_count = currentCount + 1;
+      updatedMetadata.updated_at = new Date().toISOString();
+      await vectorsClient.update(memoryId, updatedMetadata);
+    } catch (error) {
+      // Ignore errors in access count updates
+    }
+  }
+
   private generateMemoryId(): string {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
       const r = Math.random() * 16 | 0;
@@ -611,7 +682,7 @@ export class Memory {
           description: `Unified memory store: ${targetIndexName}`,
           cloud_config: this.currentCloudConfig
         },
-        delete_protection: false
+        delete_protection: this.deleteProtection
       };
 
       const createResponse = await this.client._makeRequest('POST', 'https://api.gravixlayer.com/v1/vectors/indexes', createData);
@@ -625,4 +696,41 @@ export class Memory {
       throw new Error(`Failed to create memory index '${targetIndexName}': ${error instanceof Error ? error.message : String(error)}`);
     }
   }
+
+
+  /**
+   * List all unique user IDs in the current index
+   * 
+   * Note: This scans through memories to find unique users.
+   * For large datasets, this may be slow.
+   */
+  async listAllUsers(limit: number = 1000): Promise<string[]> {
+    try {
+      const indexId = await this.ensureSharedIndex(this.currentIndexName);
+      const vectorsClient = this.client.vectors.index(indexId);
+
+      const searchResults = await vectorsClient.searchText(
+        'user',
+        this.currentEmbeddingModel,
+        limit,
+        null,
+        true,
+        false
+      );
+
+      const uniqueUsers = new Set<string>();
+      for (const hit of searchResults.hits || []) {
+        const userId = hit.metadata?.user_id;
+        if (userId) {
+          uniqueUsers.add(userId);
+        }
+      }
+
+      return Array.from(uniqueUsers).sort();
+    } catch (error) {
+      console.error('Error listing users:', error instanceof Error ? error.message : String(error));
+      return [];
+    }
+  }
 }
+
