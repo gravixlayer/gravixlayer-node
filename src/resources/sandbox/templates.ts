@@ -20,12 +20,7 @@ export class SandboxTemplates {
     return this._agentsBaseUrl;
   }
 
-  private async makeAgentsRequest(
-    method: string,
-    endpoint: string,
-    data?: any,
-    options?: any
-  ): Promise<any> {
+  private async makeAgentsRequest(method: string, endpoint: string, data?: any, options?: any): Promise<any> {
     const originalBaseUrl = this.client['baseURL'];
     this.client['baseURL'] = this.getAgentsBaseUrl();
 
@@ -37,10 +32,7 @@ export class SandboxTemplates {
     }
   }
 
-  async list(options?: {
-    limit?: number;
-    offset?: number;
-  }): Promise<TemplateList> {
+  async list(options?: { limit?: number; offset?: number }): Promise<TemplateList> {
     const params = new URLSearchParams();
     if (options?.limit !== undefined) params.append('limit', options.limit.toString());
     if (options?.offset !== undefined) params.append('offset', options.offset.toString());
@@ -49,11 +41,11 @@ export class SandboxTemplates {
     const result = await this.makeAgentsRequest('GET', endpoint);
 
     const templates: Template[] = result.templates.map((template: any) => template as Template);
-    
+
     return {
       templates,
       limit: result.limit,
-      offset: result.offset
+      offset: result.offset,
     };
   }
 }

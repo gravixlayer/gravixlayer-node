@@ -16,7 +16,7 @@ import type {
   MemorySearchResponse,
   MemoryGetAllResponse,
   MemoryOperationResponse,
-  MemoryEntry
+  MemoryEntry,
 } from '../../types/memory';
 
 import { MemoryType } from '../../types/memory';
@@ -50,7 +50,7 @@ export class SyncMemory {
     this.currentCloudProvider = cloudProvider;
     this.currentRegion = region;
     this.deleteProtection = deleteProtection;
-    
+
     // Model dimensions mapping (matching Python implementation)
     this.modelDimensions = {
       'microsoft/multilingual-e5-large': 1024,
@@ -60,9 +60,9 @@ export class SyncMemory {
       'baai/bge-small-en-v1.5': 384,
       'nomic-ai/nomic-embed-text:v1.5': 768,
       'all-MiniLM-L6-v2': 384,
-      'all-mpnet-base-v2': 768
+      'all-mpnet-base-v2': 768,
     };
-    
+
     this.embeddingDimension = this.getEmbeddingDimension(this.currentEmbeddingModel);
   }
 
@@ -130,7 +130,7 @@ export class SyncMemory {
       index_name: this.currentIndexName,
       cloud_provider: this.currentCloudProvider,
       region: this.currentRegion,
-      embedding_dimension: this.embeddingDimension
+      embedding_dimension: this.embeddingDimension,
     };
   }
 
@@ -192,7 +192,7 @@ export class SyncMemory {
 
     // Handle direct content - simplified synchronous implementation
     const memoryId = this.generateMemoryId();
-    
+
     // Create memory metadata
     const finalMetadata = {
       user_id: user_id,
@@ -204,7 +204,7 @@ export class SyncMemory {
       updated_at: new Date().toISOString(),
       importance_score: 1.0,
       access_count: 0,
-      ...memoryMetadata
+      ...memoryMetadata,
     };
 
     // Note: In a real sync implementation, this would use synchronous HTTP calls
@@ -212,11 +212,13 @@ export class SyncMemory {
     console.log(`🆔 Memory ID: ${memoryId}`);
 
     return {
-      results: [{
-        id: memoryId,
-        memory: messages as string,
-        event: 'ADD'
-      }]
+      results: [
+        {
+          id: memoryId,
+          memory: messages as string,
+          event: 'ADD',
+        },
+      ],
     };
   }
 
@@ -228,7 +230,7 @@ export class SyncMemory {
   ): MemoryResponse {
     const shouldInfer = infer !== undefined ? infer : true;
     const memoryMetadata = metadata || {};
-    
+
     if (!shouldInfer) {
       // Store raw messages without inference
       const results = [];
@@ -242,22 +244,22 @@ export class SyncMemory {
     }
 
     // AI inference from conversation (simplified)
-    const conversationText = messages.map(m => `${m.role}: ${m.content}`).join('\n');
+    const conversationText = messages.map((m) => `${m.role}: ${m.content}`).join('\n');
     const inferredMemories = this.inferMemoriesFromConversation(conversationText, user_id);
-    
+
     const results = [];
     for (const memory of inferredMemories) {
       const result = this.add(memory, user_id, memoryMetadata);
       results.push(...result.results);
     }
-    
+
     return { results };
   }
 
   private inferMemoriesFromConversation(conversationText: string, user_id: string): string[] {
     // Simplified inference - in real implementation, this would call the inference model
     const memories: string[] = [];
-    
+
     if (conversationText.includes('prefer') || conversationText.includes('like')) {
       const lines = conversationText.split('\n');
       for (const line of lines) {
@@ -266,7 +268,7 @@ export class SyncMemory {
         }
       }
     }
-    
+
     return memories.length > 0 ? memories : ['User engaged in conversation'];
   }
 
@@ -287,8 +289,6 @@ export class SyncMemory {
       console.log('⚠️  Warning: Per-operation index override not supported in sync mode');
     }
 
-
-    
     // Note: In a real sync implementation, this would use synchronous HTTP calls
     console.log(`🔍 Searching (sync): "${query}" for user ${user_id}`);
     console.log(`📊 Limit: ${limit}, Threshold: ${threshold}`);
@@ -304,7 +304,7 @@ export class SyncMemory {
 
     // Note: In a real sync implementation, this would use synchronous HTTP calls
     console.log(`📖 Getting memory (sync): ${memory_id} for user ${user_id}`);
-    
+
     return null; // Would be implemented with sync HTTP calls
   }
 
@@ -315,7 +315,7 @@ export class SyncMemory {
 
     // Note: In a real sync implementation, this would use synchronous HTTP calls
     console.log(`📚 Getting all memories (sync) for user ${user_id}, limit: ${limit}`);
-    
+
     return { results: [] }; // Would be implemented with sync HTTP calls
   }
 
@@ -327,7 +327,7 @@ export class SyncMemory {
     // Note: In a real sync implementation, this would use synchronous HTTP calls
     console.log(`✏️  Updating memory (sync): ${memory_id} for user ${user_id}`);
     console.log(`📝 New content: ${data}`);
-    
+
     return { message: `Memory ${memory_id} updated successfully!` };
   }
 
@@ -338,14 +338,14 @@ export class SyncMemory {
 
     // Note: In a real sync implementation, this would use synchronous HTTP calls
     console.log(`🗑️  Deleting memory (sync): ${memory_id} for user ${user_id}`);
-    
+
     return { message: `Memory ${memory_id} deleted successfully!` };
   }
 
   deleteAll(user_id: string): { message: string } {
     // Note: In a real sync implementation, this would use synchronous HTTP calls
     console.log(`🗑️  Deleting all memories (sync) for user ${user_id}`);
-    
+
     return { message: `Deleted memories for user ${user_id}` };
   }
 
@@ -359,7 +359,7 @@ export class SyncMemory {
     infer: boolean = true
   ): MemoryEntry | MemoryEntry[] {
     const id = memory_id || this.generateMemoryId();
-    
+
     if (Array.isArray(content)) {
       // Handle multiple messages
       const entries: MemoryEntry[] = [];
@@ -374,7 +374,7 @@ export class SyncMemory {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             importance_score: 1.0,
-            access_count: 0
+            access_count: 0,
           });
         }
       }
@@ -391,7 +391,7 @@ export class SyncMemory {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       importance_score: 1.0,
-      access_count: 0
+      access_count: 0,
     };
   }
 
@@ -404,7 +404,7 @@ export class SyncMemory {
   ): any[] {
     console.log(`🔍 Searching memories (sync): "${query}" for user ${user_id}`);
     console.log(`🎯 Types: ${memory_types?.join(', ') || 'all'}, Top K: ${top_k}, Min relevance: ${min_relevance}`);
-    
+
     return []; // Would be implemented with sync HTTP calls
   }
 
@@ -434,12 +434,7 @@ export class SyncMemory {
     return []; // Would be implemented with sync HTTP calls
   }
 
-  listAllMemories(
-    user_id: string,
-    limit: number,
-    sort_by: string,
-    ascending: boolean
-  ): MemoryEntry[] {
+  listAllMemories(user_id: string, limit: number, sort_by: string, ascending: boolean): MemoryEntry[] {
     console.log(`📋 Listing all memories (sync) for user ${user_id}`);
     console.log(`📊 Limit: ${limit}, Sort by: ${sort_by}, Ascending: ${ascending}`);
     return []; // Would be implemented with sync HTTP calls
@@ -458,14 +453,14 @@ export class SyncMemory {
       episodic_count: 0,
       working_count: 0,
       semantic_count: 0,
-      last_updated: new Date().toISOString()
+      last_updated: new Date().toISOString(),
     };
   }
 
   private generateMemoryId(): string {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0;
-      const v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = (Math.random() * 16) | 0;
+      const v = c == 'x' ? r : (r & 0x3) | 0x8;
       return v.toString(16);
     });
   }

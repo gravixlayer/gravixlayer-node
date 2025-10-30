@@ -1,13 +1,12 @@
-
 import FormData from 'form-data';
 import { createReadStream, statSync } from 'fs';
-import { 
-  FileObject, 
-  FileUploadResponse, 
-  FileListResponse, 
-  FileDeleteResponse, 
+import {
+  FileObject,
+  FileUploadResponse,
+  FileListResponse,
+  FileDeleteResponse,
   FileCreateParams,
-  FILE_PURPOSES 
+  FILE_PURPOSES,
 } from '../types/files';
 import { GravixLayerBadRequestError, GravixLayerAuthenticationError } from '../types/exceptions';
 
@@ -31,20 +30,16 @@ export class Files {
 
     // Validate purpose
     if (!FILE_PURPOSES.includes(purpose)) {
-      throw new GravixLayerBadRequestError(
-        `Invalid purpose. Supported: ${FILE_PURPOSES.join(', ')}`
-      );
+      throw new GravixLayerBadRequestError(`Invalid purpose. Supported: ${FILE_PURPOSES.join(', ')}`);
     }
 
     // Prepare form data
     const formData = new FormData();
     formData.append('purpose', purpose);
-    
+
     if (expires_after !== undefined) {
       if (!Number.isInteger(expires_after) || expires_after <= 0) {
-        throw new GravixLayerBadRequestError(
-          'expires_after must be a positive integer (seconds)'
-        );
+        throw new GravixLayerBadRequestError('expires_after must be a positive integer (seconds)');
       }
       formData.append('expires_after', expires_after.toString());
     }
@@ -55,16 +50,13 @@ export class Files {
       try {
         const stats = statSync(file);
         if (stats.size === 0) {
-          throw new GravixLayerBadRequestError(
-            'File size must be between 1 byte and 200MB'
-          );
+          throw new GravixLayerBadRequestError('File size must be between 1 byte and 200MB');
         }
-        if (stats.size > 200 * 1024 * 1024) { // 200MB
-          throw new GravixLayerBadRequestError(
-            'File size must be between 1 byte and 200MB'
-          );
+        if (stats.size > 200 * 1024 * 1024) {
+          // 200MB
+          throw new GravixLayerBadRequestError('File size must be between 1 byte and 200MB');
         }
-        
+
         const uploadFilename = filename || file.split('/').pop() || 'uploaded_file';
         formData.append('file', createReadStream(file), uploadFilename);
       } catch (error: any) {
@@ -87,18 +79,13 @@ export class Files {
     this.client.baseURL = this.client.baseURL.replace('/v1/inference', '/v1/files');
 
     try {
-      const response = await this.client._makeRequest(
-        'POST',
-        '',
-        formData,
-        false
-      );
+      const response = await this.client._makeRequest('POST', '', formData, false);
 
-      const result = await response.json() as any;
+      const result = (await response.json()) as any;
       return {
         message: result.message || 'file uploaded',
         file_name: result.file_name || result.filename || '',
-        purpose: result.purpose || purpose
+        purpose: result.purpose || purpose,
       };
     } finally {
       this.client.baseURL = originalBaseURL;
@@ -122,7 +109,7 @@ export class Files {
     try {
       const response = await this.client._makeRequest('GET', '');
       const result = await response.json();
-      
+
       const filesData = result.data || [];
       const files: FileObject[] = filesData.map((fileData: any) => ({
         id: fileData.id || '',
@@ -131,7 +118,7 @@ export class Files {
         created_at: fileData.created_at || 0,
         filename: fileData.filename || '',
         purpose: fileData.purpose || '',
-        expires_after: fileData.expires_after
+        expires_after: fileData.expires_after,
       }));
 
       return { data: files };
@@ -154,7 +141,7 @@ export class Files {
     try {
       const response = await this.client._makeRequest('GET', fileId);
       const result = await response.json();
-      
+
       return {
         id: result.id || '',
         object: result.object || 'file',
@@ -162,7 +149,7 @@ export class Files {
         created_at: result.created_at || 0,
         filename: result.filename || '',
         purpose: result.purpose || '',
-        expires_after: result.expires_after
+        expires_after: result.expires_after,
       };
     } finally {
       this.client.baseURL = originalBaseURL;
@@ -182,10 +169,10 @@ export class Files {
 
     try {
       const response = await this.client._makeRequest('GET', `${fileId}/content`);
-      
+
       if (!response.ok) {
         let errorMessage = 'Failed to download file content';
-        
+
         try {
           const errorText = await response.text();
           if (errorText) {
@@ -195,7 +182,7 @@ export class Files {
           // If we can't parse the error, use the status
           errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
-        
+
         if (response.status === 404) {
           throw new GravixLayerBadRequestError('file not found');
         } else if (response.status === 500) {
@@ -225,11 +212,11 @@ export class Files {
     try {
       const response = await this.client._makeRequest('DELETE', fileId);
       const result = await response.json();
-      
+
       return {
         message: result.message || '',
         file_id: result.file_id || '',
-        file_name: result.file_name || ''
+        file_name: result.file_name || '',
       };
     } finally {
       this.client.baseURL = originalBaseURL;

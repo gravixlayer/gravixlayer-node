@@ -10,7 +10,7 @@ import {
   SUPPORTED_VECTOR_TYPES,
   SUPPORTED_INDEX_TYPES,
   SUPPORTED_CLOUD_PROVIDERS,
-  SUPPORTED_REGIONS
+  SUPPORTED_REGIONS,
 } from '../../types/vectors';
 import { GravixLayerBadRequestError } from '../../types/exceptions';
 
@@ -30,7 +30,7 @@ export class VectorIndexes {
       region,
       index_type,
       metadata,
-      delete_protection = false
+      delete_protection = false,
     } = params;
 
     // Validate parameters
@@ -43,15 +43,11 @@ export class VectorIndexes {
     }
 
     if (!SUPPORTED_METRICS.includes(metric as any)) {
-      throw new GravixLayerBadRequestError(
-        `Unsupported metric. Supported: ${SUPPORTED_METRICS.join(', ')}`
-      );
+      throw new GravixLayerBadRequestError(`Unsupported metric. Supported: ${SUPPORTED_METRICS.join(', ')}`);
     }
 
     if (!SUPPORTED_VECTOR_TYPES.includes(vector_type as any)) {
-      throw new GravixLayerBadRequestError(
-        `Unsupported vector type. Supported: ${SUPPORTED_VECTOR_TYPES.join(', ')}`
-      );
+      throw new GravixLayerBadRequestError(`Unsupported vector type. Supported: ${SUPPORTED_VECTOR_TYPES.join(', ')}`);
     }
 
     if (cloud_provider && !SUPPORTED_CLOUD_PROVIDERS.includes(cloud_provider as any)) {
@@ -61,15 +57,11 @@ export class VectorIndexes {
     }
 
     if (region && !SUPPORTED_REGIONS.includes(region as any)) {
-      throw new GravixLayerBadRequestError(
-        `Unsupported region. Supported: ${SUPPORTED_REGIONS.join(', ')}`
-      );
+      throw new GravixLayerBadRequestError(`Unsupported region. Supported: ${SUPPORTED_REGIONS.join(', ')}`);
     }
 
     if (index_type && !SUPPORTED_INDEX_TYPES.includes(index_type as any)) {
-      throw new GravixLayerBadRequestError(
-        `Unsupported index type. Supported: ${SUPPORTED_INDEX_TYPES.join(', ')}`
-      );
+      throw new GravixLayerBadRequestError(`Unsupported index type. Supported: ${SUPPORTED_INDEX_TYPES.join(', ')}`);
     }
 
     const requestData = {
@@ -81,7 +73,7 @@ export class VectorIndexes {
       region,
       index_type,
       metadata,
-      delete_protection
+      delete_protection,
     };
 
     // Use vector database API endpoint
@@ -99,10 +91,7 @@ export class VectorIndexes {
    * List all vector indexes
    */
   async list(): Promise<VectorIndexList> {
-    const response = await this.client._makeRequest(
-      'GET',
-      'https://api.gravixlayer.com/v1/vectors/indexes'
-    );
+    const response = await this.client._makeRequest('GET', 'https://api.gravixlayer.com/v1/vectors/indexes');
 
     const result = await response.json();
     return result as VectorIndexList;
@@ -116,10 +105,7 @@ export class VectorIndexes {
       throw new GravixLayerBadRequestError('Index ID is required');
     }
 
-    const response = await this.client._makeRequest(
-      'GET',
-      `https://api.gravixlayer.com/v1/vectors/indexes/${indexId}`
-    );
+    const response = await this.client._makeRequest('GET', `https://api.gravixlayer.com/v1/vectors/indexes/${indexId}`);
 
     const result = await response.json();
     return result as VectorIndex;
@@ -156,7 +142,6 @@ export class VectorIndexes {
       `https://api.gravixlayer.com/v1/vectors/indexes/${indexId}`
     );
 
-    const result = await response.json();
-    return result;
+    return await response.json();
   }
 }

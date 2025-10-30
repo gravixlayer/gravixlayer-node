@@ -1,4 +1,3 @@
-
 import { GravixLayer } from './client';
 
 export { GravixLayer, type GravixLayerOptions } from './client';
@@ -19,39 +18,19 @@ export type {
 } from './types/chat';
 
 // Embeddings types
-export type {
-  EmbeddingResponse,
-  EmbeddingObject,
-  EmbeddingUsage,
-  EmbeddingCreateParams,
-} from './types/embeddings';
+export type { EmbeddingResponse, EmbeddingObject, EmbeddingUsage, EmbeddingCreateParams } from './types/embeddings';
 
 // Completions types
-export type {
-  Completion,
-  CompletionChoice,
-  CompletionUsage,
-  CompletionCreateParams,
-} from './types/completions';
+export type { Completion, CompletionChoice, CompletionUsage, CompletionCreateParams } from './types/completions';
 
 // Deployments types
-export type {
-  Deployment,
-  DeploymentCreate,
-  DeploymentResponse,
-} from './types/deployments';
+export type { Deployment, DeploymentCreate, DeploymentResponse } from './types/deployments';
 
 // Accelerators types
-export type {
-  Accelerator,
-} from './types/accelerators';
+export type { Accelerator } from './types/accelerators';
 
 // Files types
-export type {
-  FileObject,
-  FileCreateParams,
-  FilePurpose,
-} from './types/files';
+export type { FileObject, FileCreateParams, FilePurpose } from './types/files';
 
 // Vector types
 export type {

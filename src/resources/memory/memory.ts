@@ -15,7 +15,7 @@ import type {
   MemorySearchResponse,
   MemoryGetAllResponse,
   MemoryOperationResponse,
-  MemoryEntry
+  MemoryEntry,
 } from '../../types/memory';
 
 import { MemoryType } from '../../types/memory';
@@ -49,9 +49,9 @@ export class Memory {
     this.currentCloudConfig = {
       cloud_provider: cloudProvider,
       region: region,
-      index_type: 'serverless'
+      index_type: 'serverless',
     };
-    
+
     // Model dimensions mapping (matching Python implementation)
     this.modelDimensions = {
       'microsoft/multilingual-e5-large': 1024, // Server maps to baai/bge-large-en-v1.5
@@ -61,9 +61,9 @@ export class Memory {
       'baai/bge-small-en-v1.5': 384,
       'nomic-ai/nomic-embed-text:v1.5': 768,
       'all-MiniLM-L6-v2': 384,
-      'all-mpnet-base-v2': 768
+      'all-mpnet-base-v2': 768,
     };
-    
+
     this.embeddingDimension = this.getEmbeddingDimension(this.currentEmbeddingModel);
   }
 
@@ -86,7 +86,7 @@ export class Memory {
   ): Promise<MemoryResponse> {
     const { metadata, infer, embeddingModel, indexName } = options || {};
     const shouldInfer = infer !== undefined ? infer : true;
-    
+
     // Handle conversation messages
     if (Array.isArray(messages)) {
       return await this.addFromMessages(messages, user_id, metadata, shouldInfer, embeddingModel, indexName);
@@ -95,13 +95,13 @@ export class Memory {
     // Handle direct content
     const activeEmbeddingModel = embeddingModel || this.currentEmbeddingModel;
     const targetIndex = indexName || this.currentIndexName;
-    
+
     const indexId = await this.ensureSharedIndex(targetIndex);
     const vectorsClient = this.client.vectors.index(indexId);
-    
+
     // Generate memory ID
     const memoryId = this.generateMemoryId();
-    
+
     // Create memory metadata
     const memoryMetadata = {
       user_id: user_id,
@@ -113,23 +113,20 @@ export class Memory {
       updated_at: new Date().toISOString(),
       importance_score: 1.0,
       access_count: 0,
-      ...metadata
+      ...metadata,
     };
 
     // Store memory as vector
-    await vectorsClient.upsertText(
-      messages as string,
-      activeEmbeddingModel,
-      memoryId,
-      memoryMetadata
-    );
+    await vectorsClient.upsertText(messages as string, activeEmbeddingModel, memoryId, memoryMetadata);
 
     return {
-      results: [{
-        id: memoryId,
-        memory: messages as string,
-        event: 'ADD'
-      }]
+      results: [
+        {
+          id: memoryId,
+          memory: messages as string,
+          event: 'ADD',
+        },
+      ],
     };
   }
 
@@ -143,13 +140,17 @@ export class Memory {
   ): Promise<MemoryResponse> {
     const shouldInfer = infer !== undefined ? infer : true;
     const memoryMetadata = metadata || {};
-    
+
     if (!shouldInfer) {
       // Store raw messages without inference
       const results = [];
       for (const message of messages) {
         if (message.content) {
-          const result = await this.add(message.content, user_id, { metadata: memoryMetadata, embeddingModel, indexName });
+          const result = await this.add(message.content, user_id, {
+            metadata: memoryMetadata,
+            embeddingModel,
+            indexName,
+          });
           results.push(...result.results);
         }
       }
@@ -157,22 +158,22 @@ export class Memory {
     }
 
     // AI inference from conversation
-    const conversationText = messages.map(m => `${m.role}: ${m.content}`).join('\n');
+    const conversationText = messages.map((m) => `${m.role}: ${m.content}`).join('\n');
     const inferredMemories = await this.inferMemoriesFromConversation(conversationText, user_id);
-    
+
     const results = [];
     for (const memory of inferredMemories) {
       const result = await this.add(memory, user_id, { metadata: memoryMetadata, embeddingModel, indexName });
       results.push(...result.results);
     }
-    
+
     return { results };
   }
 
   private async inferMemoriesFromConversation(conversationText: string, user_id: string): Promise<string[]> {
     // Simplified inference - in real implementation, this would call the inference model
     const memories: string[] = [];
-    
+
     if (conversationText.includes('prefer') || conversationText.includes('like')) {
       const lines = conversationText.split('\n');
       for (const line of lines) {
@@ -181,7 +182,7 @@ export class Memory {
         }
       }
     }
-    
+
     return memories.length > 0 ? memories : ['User engaged in conversation'];
   }
 
@@ -203,10 +204,10 @@ export class Memory {
     const searchThreshold = threshold !== undefined ? threshold : 0.3;
     const activeEmbeddingModel = embeddingModel || this.currentEmbeddingModel;
     const targetIndex = indexName || this.currentIndexName;
-    
+
     // Validate limit parameter
     const validLimit = Math.max(1, Math.min(1000, searchLimit));
-    
+
     try {
       const indexId = await this.ensureSharedIndex(targetIndex);
       const vectorsClient = this.client.vectors.index(indexId);
@@ -242,7 +243,7 @@ export class Memory {
             metadata: hit.metadata || {},
             score: hit.score,
             created_at: hit.metadata?.created_at || new Date().toISOString(),
-            updated_at: hit.metadata?.updated_at || new Date().toISOString()
+            updated_at: hit.metadata?.updated_at || new Date().toISOString(),
           });
         }
       }
@@ -269,9 +270,9 @@ export class Memory {
       const targetIndex = indexName || this.currentIndexName;
       const indexId = await this.ensureSharedIndex(targetIndex);
       const vectorsClient = this.client.vectors.index(indexId);
-      
+
       const vector = await vectorsClient.get(memory_id);
-      
+
       if (vector?.metadata?.user_id !== user_id) {
         return null;
       }
@@ -282,7 +283,7 @@ export class Memory {
         hash: vector.metadata?.hash || '',
         metadata: vector.metadata || {},
         created_at: vector.metadata?.created_at || new Date().toISOString(),
-        updated_at: vector.metadata?.updated_at || new Date().toISOString()
+        updated_at: vector.metadata?.updated_at || new Date().toISOString(),
       };
     } catch (error) {
       return null;
@@ -308,7 +309,7 @@ export class Memory {
       const targetIndex = indexName || this.currentIndexName;
       const activeEmbeddingModel = embeddingModel || this.currentEmbeddingModel;
       const indexId = await this.ensureSharedIndex(targetIndex);
-      
+
       // Get current memory and verify ownership
       const currentMemory = await this.get(memory_id, user_id, { indexName });
       if (!currentMemory) {
@@ -320,7 +321,7 @@ export class Memory {
         ...currentMemory.metadata,
         content: data,
         updated_at: new Date().toISOString(),
-        embedding_model: activeEmbeddingModel
+        embedding_model: activeEmbeddingModel,
       };
 
       if (metadata) {
@@ -333,12 +334,7 @@ export class Memory {
 
       // Re-embed with new content
       const vectorsClient = this.client.vectors.index(indexId);
-      await vectorsClient.upsertText(
-        data,
-        activeEmbeddingModel,
-        memory_id,
-        updatedMetadata
-      );
+      await vectorsClient.upsertText(data, activeEmbeddingModel, memory_id, updatedMetadata);
 
       return { message: `Memory ${memory_id} updated successfully!` };
     } catch (error) {
@@ -354,7 +350,7 @@ export class Memory {
       const { indexName } = options || {};
       const targetIndex = indexName || this.currentIndexName;
       const indexId = await this.ensureSharedIndex(targetIndex);
-      
+
       // Verify memory belongs to user
       const memory = await this.get(memory_id, user_id, options);
       if (!memory) {
@@ -404,7 +400,7 @@ export class Memory {
       this.currentCloudConfig = {
         cloud_provider: cloudProvider || this.currentCloudConfig.cloud_provider,
         region: region || this.currentCloudConfig.region,
-        index_type: 'serverless'
+        index_type: 'serverless',
       };
       console.log(`🔄 Switched cloud config:`, this.currentCloudConfig);
     }
@@ -418,7 +414,7 @@ export class Memory {
       inference_model: this.currentInferenceModel,
       index_name: this.currentIndexName,
       cloud_config: this.currentCloudConfig,
-      embedding_dimension: this.embeddingDimension
+      embedding_dimension: this.embeddingDimension,
     };
   }
 
@@ -431,7 +427,7 @@ export class Memory {
     try {
       // Ensure the index exists (will create if needed)
       const indexId = await this.ensureSharedIndex(indexName);
-      
+
       // Update current configuration
       this.currentIndexName = indexName;
       console.log(`✅ Switched to index: ${indexName} (ID: ${indexId})`);
@@ -447,17 +443,17 @@ export class Memory {
       const indexList = await this.client._makeRequest('GET', 'https://api.gravixlayer.com/v1/vectors/indexes');
       const indexData = await indexList.json();
       const indexNames: string[] = [];
-      
+
       for (const idx of indexData.indexes || []) {
-        if (idx.metadata && idx.metadata.type === 'unified_memory_store') {
-          indexNames.push(idx.name);
-        } else if (['gravixlayer_memories', 'user_preferences', 'conversation_history'].includes(idx.name)) {
-          indexNames.push(idx.name);
-        } else if (!indexNames.includes(idx.name)) {
+        const isUnifiedMemory = idx.metadata && idx.metadata.type === 'unified_memory_store';
+        const isKnownIndex = ['gravixlayer_memories', 'user_preferences', 'conversation_history'].includes(idx.name);
+        const isNewIndex = !indexNames.includes(idx.name);
+
+        if (isUnifiedMemory || isKnownIndex || isNewIndex) {
           indexNames.push(idx.name);
         }
       }
-      
+
       return indexNames.sort();
     } catch (error) {
       console.error('Error listing indexes:', error instanceof Error ? error.message : String(error));
@@ -468,17 +464,11 @@ export class Memory {
   /**
    * Get memories by type - Additional method from Python implementation
    */
-  async getMemoriesByType(
-    user_id: string,
-    memory_type: MemoryType,
-    limit: number
-  ): Promise<MemoryEntry[]> {
+  async getMemoriesByType(user_id: string, memory_type: MemoryType, limit: number): Promise<MemoryEntry[]> {
     try {
       const allMemories = await this.getAll(user_id, { limit: limit || 1000 });
-      
-      return allMemories.results
-        .filter(memory => memory.memory_type === memory_type)
-        .slice(0, limit);
+
+      return allMemories.results.filter((memory) => memory.memory_type === memory_type).slice(0, limit);
     } catch (error) {
       console.error('getMemoriesByType failed:', error);
       return [];
@@ -491,10 +481,10 @@ export class Memory {
   async cleanupWorkingMemory(user_id: string): Promise<number> {
     try {
       const workingMemories = await this.getMemoriesByType(user_id, MemoryType.WORKING, 1000);
-      
+
       let cleanedCount = 0;
       const cutoffTime = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2 hours ago
-      
+
       for (const memory of workingMemories) {
         const createdAt = new Date(memory.created_at);
         if (createdAt < cutoffTime) {
@@ -506,7 +496,7 @@ export class Memory {
           }
         }
       }
-      
+
       return cleanedCount;
     } catch (error) {
       console.error('cleanupWorkingMemory failed:', error);
@@ -517,19 +507,14 @@ export class Memory {
   /**
    * List all memories with sorting - Additional method from Python implementation
    */
-  async listAllMemories(
-    user_id: string,
-    limit: number,
-    sort_by: string,
-    ascending: boolean
-  ): Promise<MemoryEntry[]> {
+  async listAllMemories(user_id: string, limit: number, sort_by: string, ascending: boolean): Promise<MemoryEntry[]> {
     try {
       const allMemories = await this.getAll(user_id, { limit });
-      
+
       // Sort memories based on the specified field
       allMemories.results.sort((a, b) => {
         let aValue: any, bValue: any;
-        
+
         switch (sort_by) {
           case 'created_at':
             aValue = new Date(a.created_at);
@@ -550,14 +535,14 @@ export class Memory {
           default:
             return 0;
         }
-        
+
         if (ascending) {
           return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
         } else {
           return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
         }
       });
-      
+
       return allMemories.results;
     } catch (error) {
       console.error('listAllMemories failed:', error);
@@ -571,16 +556,16 @@ export class Memory {
   async getStats(user_id: string): Promise<any> {
     try {
       const allMemories = await this.getAll(user_id, { limit: 1000 });
-      
+
       const stats = {
         total_memories: allMemories.results.length,
         factual_count: 0,
         episodic_count: 0,
         working_count: 0,
         semantic_count: 0,
-        last_updated: new Date(0).toISOString()
+        last_updated: new Date(0).toISOString(),
       };
-      
+
       for (const memory of allMemories.results) {
         switch (memory.memory_type) {
           case MemoryType.FACTUAL:
@@ -596,12 +581,12 @@ export class Memory {
             stats.semantic_count++;
             break;
         }
-        
+
         if (memory.updated_at > stats.last_updated) {
           stats.last_updated = memory.updated_at;
         }
       }
-      
+
       return stats;
     } catch (error) {
       console.error('getStats failed:', error);
@@ -611,7 +596,7 @@ export class Memory {
         episodic_count: 0,
         working_count: 0,
         semantic_count: 0,
-        last_updated: new Date().toISOString()
+        last_updated: new Date().toISOString(),
       };
     }
   }
@@ -634,16 +619,16 @@ export class Memory {
   }
 
   private generateMemoryId(): string {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0;
-      const v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = (Math.random() * 16) | 0;
+      const v = c == 'x' ? r : (r & 0x3) | 0x8;
       return v.toString(16);
     });
   }
 
   private async ensureSharedIndex(targetIndex?: string): Promise<string> {
     const targetIndexName = targetIndex || this.currentIndexName;
-    
+
     // Check cache first
     if (this.indexCache[targetIndexName]) {
       return this.indexCache[targetIndexName];
@@ -653,7 +638,7 @@ export class Memory {
       // Try to find existing index
       const listResponse = await this.client._makeRequest('GET', 'https://api.gravixlayer.com/v1/vectors/indexes');
       const indexList = await listResponse.json();
-      
+
       for (const idx of indexList.indexes || []) {
         if (idx.name === targetIndexName) {
           this.indexCache[targetIndexName] = idx.id;
@@ -680,27 +665,31 @@ export class Memory {
           dimension: this.embeddingDimension,
           created_at: new Date().toISOString(),
           description: `Unified memory store: ${targetIndexName}`,
-          cloud_config: this.currentCloudConfig
+          cloud_config: this.currentCloudConfig,
         },
-        delete_protection: this.deleteProtection
+        delete_protection: this.deleteProtection,
       };
 
-      const createResponse = await this.client._makeRequest('POST', 'https://api.gravixlayer.com/v1/vectors/indexes', createData);
+      const createResponse = await this.client._makeRequest(
+        'POST',
+        'https://api.gravixlayer.com/v1/vectors/indexes',
+        createData
+      );
       const result = await createResponse.json();
-      
+
       this.indexCache[targetIndexName] = result.id;
       console.log(`✅ Successfully created memory index: ${result.id}`);
       return result.id;
-
     } catch (error) {
-      throw new Error(`Failed to create memory index '${targetIndexName}': ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Failed to create memory index '${targetIndexName}': ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
-
   /**
    * List all unique user IDs in the current index
-   * 
+   *
    * Note: This scans through memories to find unique users.
    * For large datasets, this may be slow.
    */
@@ -733,4 +722,3 @@ export class Memory {
     }
   }
 }
-

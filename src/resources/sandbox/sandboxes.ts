@@ -1,6 +1,7 @@
 /**
  * Sandboxes resource for synchronous client
  */
+import FormData from 'form-data';
 import { GravixLayer } from '../../client';
 import {
   Sandbox,
@@ -19,7 +20,7 @@ import {
   CodeContext,
   CodeContextDeleteResponse,
   SandboxKillResponse,
-  FileInfo
+  FileInfo,
 } from '../../types/sandbox';
 
 export class Sandboxes {
@@ -38,12 +39,7 @@ export class Sandboxes {
     return this._agentsBaseUrl;
   }
 
-  private async makeAgentsRequest(
-    method: string,
-    endpoint: string,
-    data?: any,
-    options?: any
-  ): Promise<any> {
+  private async makeAgentsRequest(method: string, endpoint: string, data?: any, options?: any): Promise<any> {
     const originalBaseUrl = this.client['baseURL'];
     this.client['baseURL'] = this.getAgentsBaseUrl();
 
@@ -71,7 +67,7 @@ export class Sandboxes {
       template: options.template || 'python-base-v1',
       timeout: options.timeout || 300,
       ...(options.env_vars && { env_vars: options.env_vars }),
-      ...(options.metadata && { metadata: options.metadata })
+      ...(options.metadata && { metadata: options.metadata }),
     };
 
     const result = await this.makeAgentsRequest('POST', 'sandboxes', data);
@@ -85,7 +81,7 @@ export class Sandboxes {
       timeout_at: null,
       cpu_count: null,
       memory_mb: null,
-      ended_at: null
+      ended_at: null,
     };
 
     for (const [key, defaultValue] of Object.entries(defaults)) {
@@ -97,10 +93,7 @@ export class Sandboxes {
     return result as Sandbox;
   }
 
-  async list(options?: {
-    limit?: number;
-    offset?: number;
-  }): Promise<SandboxList> {
+  async list(options?: { limit?: number; offset?: number }): Promise<SandboxList> {
     const params = new URLSearchParams();
     if (options?.limit !== undefined) params.append('limit', options.limit.toString());
     if (options?.offset !== undefined) params.append('offset', options.offset.toString());
@@ -117,7 +110,7 @@ export class Sandboxes {
       timeout_at: null,
       cpu_count: null,
       memory_mb: null,
-      ended_at: null
+      ended_at: null,
     };
 
     const sandboxes = result.sandboxes.map((sandboxData: any) => {
@@ -131,7 +124,7 @@ export class Sandboxes {
 
     return {
       sandboxes,
-      total: result.total
+      total: result.total,
     };
   }
 
@@ -147,7 +140,7 @@ export class Sandboxes {
       timeout_at: null,
       cpu_count: null,
       memory_mb: null,
-      ended_at: null
+      ended_at: null,
     };
 
     for (const [key, defaultValue] of Object.entries(defaults)) {
@@ -207,7 +200,7 @@ export class Sandboxes {
       size: fileInfo.size || 0,
       is_dir: fileInfo.is_dir || false,
       modified_at: fileInfo.modified_at || fileInfo.mod_time || '',
-      mode: fileInfo.mode
+      mode: fileInfo.mode,
     }));
 
     return { files };
@@ -225,20 +218,15 @@ export class Sandboxes {
     return result as DirectoryCreateResponse;
   }
 
-  async uploadFile(
-    sandboxId: string,
-    file: File | Buffer,
-    path?: string
-  ): Promise<FileUploadResponse> {
-    const FormData = require('form-data');
+  async uploadFile(sandboxId: string, file: File | Buffer, path?: string): Promise<FileUploadResponse> {
     const formData = new FormData();
-    
+
     if (file instanceof Buffer) {
       formData.append('file', file, 'uploaded_file');
     } else {
       formData.append('file', file);
     }
-    
+
     if (path) {
       formData.append('path', path);
     }
@@ -247,14 +235,10 @@ export class Sandboxes {
     this.client['baseURL'] = this.getAgentsBaseUrl();
 
     try {
-      const response = await this.client['_makeRequest'](
-        'POST',
-        `sandboxes/${sandboxId}/upload`,
-        formData,
-        false,
-        { headers: formData.getHeaders() }
-      );
-      return await response.json() as FileUploadResponse;
+      const response = await this.client['_makeRequest']('POST', `sandboxes/${sandboxId}/upload`, formData, false, {
+        headers: formData.getHeaders(),
+      });
+      return (await response.json()) as FileUploadResponse;
     } finally {
       this.client['baseURL'] = originalBaseUrl;
     }
@@ -262,7 +246,7 @@ export class Sandboxes {
 
   async downloadFile(sandboxId: string, path: string): Promise<Buffer> {
     const endpoint = `sandboxes/${sandboxId}/download?path=${encodeURIComponent(path)}`;
-    
+
     const originalBaseUrl = this.client['baseURL'];
     this.client['baseURL'] = this.getAgentsBaseUrl();
 
@@ -354,7 +338,7 @@ export class Sandboxes {
       created_at: result.created_at,
       expires_at: result.expires_at,
       status: result.status,
-      last_used: result.last_used
+      last_used: result.last_used,
     };
   }
 
@@ -369,7 +353,7 @@ export class Sandboxes {
       created_at: result.created_at,
       expires_at: result.expires_at,
       status: result.status,
-      last_used: result.last_used
+      last_used: result.last_used,
     };
   }
 

@@ -19,5 +19,5 @@ export type {
   MemoryResponse,
   MemorySearchResponse,
   MemoryGetAllResponse,
-  MemoryOperationResponse
+  MemoryOperationResponse,
 } from '../../types/memory';

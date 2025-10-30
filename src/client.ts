@@ -1,11 +1,11 @@
 import fetch from 'node-fetch';
-import { 
-  GravixLayerError, 
-  GravixLayerAuthenticationError, 
-  GravixLayerRateLimitError, 
-  GravixLayerServerError, 
-  GravixLayerBadRequestError, 
-  GravixLayerConnectionError 
+import {
+  GravixLayerError,
+  GravixLayerAuthenticationError,
+  GravixLayerRateLimitError,
+  GravixLayerServerError,
+  GravixLayerBadRequestError,
+  GravixLayerConnectionError,
 } from './types/exceptions';
 import { ChatResource } from './resources/chat/completions';
 import { Embeddings } from './resources/embeddings';
@@ -29,6 +29,26 @@ export interface GravixLayerOptions {
   project?: string;
 }
 
+/**
+ * GravixLayer JavaScript SDK Client
+ *
+ * Official JavaScript/TypeScript client for the GravixLayer API.
+ * Provides a familiar interface compatible with popular AI SDKs.
+ *
+ * @example
+ * ```typescript
+ * import { GravixLayer } from 'gravixlayer';
+ *
+ * const client = new GravixLayer({
+ *   apiKey: process.env.GRAVIXLAYER_API_KEY
+ * });
+ *
+ * const response = await client.chat.completions.create({
+ *   model: "mistralai/mistral-nemo-instruct-2407",
+ *   messages: [{ role: "user", content: "Hello!" }]
+ * });
+ * ```
+ */
 export class GravixLayer {
   private apiKey: string;
   private baseURL: string;
@@ -46,33 +66,30 @@ export class GravixLayer {
   public accelerators: Accelerators;
   public files: Files;
   public vectors: VectorDatabase;
-  // Memory must be explicitly initialized - no defaults
-  // Example: const memory = new Memory(client, embeddingModel, inferenceModel, indexName, cloudProvider, region, deleteProtection)
   public sandbox: SandboxResource;
 
   constructor(options: GravixLayerOptions = {}) {
     this.apiKey = options.apiKey || process.env.GRAVIXLAYER_API_KEY || '';
     this.baseURL = options.baseURL || process.env.GRAVIXLAYER_BASE_URL || 'https://api.gravixlayer.com/v1/inference';
-    
-    // Store compatibility parameters
+
     this.organization = options.organization;
     this.project = options.project;
 
-    // Validate URL scheme - support both HTTP and HTTPS
+    // Validate URL scheme
     if (!this.baseURL.startsWith('http://') && !this.baseURL.startsWith('https://')) {
-      throw new Error('Base URL must use HTTP or HTTPS protocol');
+      throw new Error('Base URL must start with http:// or https://');
     }
 
     this.timeout = options.timeout || 60000; // 60 seconds in milliseconds
     this.maxRetries = options.maxRetries || 3;
     this.customHeaders = options.headers || {};
-    this.userAgent = options.userAgent || 'gravixlayer-js/0.0.1';
+    this.userAgent = options.userAgent || 'gravixlayer-js/0.0.16';
 
     if (!this.apiKey) {
       throw new Error('API key must be provided via options or GRAVIXLAYER_API_KEY environment variable');
     }
 
-    // Initialize resources
+    // Initialize API resources
     this.chat = new ChatResource(this);
     this.embeddings = new Embeddings(this);
     this.completions = new Completions(this);
@@ -80,8 +97,6 @@ export class GravixLayer {
     this.accelerators = new Accelerators(this);
     this.files = new Files(this);
     this.vectors = new VectorDatabase(this);
-    // Memory requires explicit initialization - no defaults
-    // Users must call: new Memory(client, embeddingModel, inferenceModel, indexName, cloudProvider, region, deleteProtection)
     this.sandbox = new SandboxResource(this);
   }
 
@@ -100,12 +115,12 @@ export class GravixLayer {
       const baseUrl = this.baseURL.replace(/\/$/, '');
       url = endpoint ? `${baseUrl}/${endpoint.replace(/^\//, '')}` : baseUrl;
     }
-    
+
     // Check if data is FormData
     const isFormData = data && typeof data === 'object' && data.constructor && data.constructor.name === 'FormData';
-    
+
     const headers = {
-      'Authorization': `Bearer ${this.apiKey}`,
+      Authorization: `Bearer ${this.apiKey}`,
       'User-Agent': this.userAgent,
       ...this.customHeaders,
       ...options.headers,
@@ -152,7 +167,7 @@ export class GravixLayer {
         if (response.status === 429) {
           const retryAfter = response.headers.get('Retry-After');
           console.warn(`Rate limit exceeded. Retrying in ${retryAfter || Math.pow(2, attempt)}s...`);
-          
+
           if (attempt < this.maxRetries) {
             await this._sleep(retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 1000);
             continue;
@@ -175,10 +190,9 @@ export class GravixLayer {
         }
 
         throw new GravixLayerError(`HTTP ${response.status}: ${response.statusText}`);
-
       } catch (error) {
         clearTimeout(timeoutId);
-        
+
         if (error instanceof GravixLayerError) {
           throw error;
         }
@@ -196,6 +210,6 @@ export class GravixLayer {
   }
 
   private _sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

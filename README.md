@@ -4,19 +4,9 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
-A comprehensive, standard compatible JavaScriptt SDK for the GravixLayer API. Drop-in replacement for OpenAI SDK with enhanced features including file management, vector databases, memory systems, and more.
+Official JavaScript/TypeScript SDK for [GravixLayer API](https://gravixlayer.com). Simple and powerful.
 
-## Features
-
-- **OpenAI Compatible**: Drop-in replacement for OpenAI SDK
-- **Chat & Text Completions**: Full support with streaming
-- **Memory Management**: Intelligent user memory system with AI inference
-- **File Management**: Upload, manage, and process various file formats
-- **Vector Database**: Complete vector operations with semantic search
-- **Deployments**: Model deployment and management
-- **Streaming**: Real-time response streaming
-- **TypeScript**: Full type definitions included
-- **CLI Tool**: Comprehensive command-line interface
+📚 **[Full Documentation](https://docs.gravixlayer.com/sdk/introduction/introduction)**
 
 ## Installation
 
@@ -30,45 +20,57 @@ npm install gravixlayer
 import { GravixLayer } from 'gravixlayer';
 
 const client = new GravixLayer({
-  apiKey: process.env.GRAVIXLAYER_API_KEY,
+  apiKey: process.env.GRAVIXLAYER_API_KEY
 });
 
 const response = await client.chat.completions.create({
-  model: "meta-llama/llama-3.1-8b-instruct",
+  model: "mistralai/mistral-nemo-instruct-2407",
   messages: [{ role: "user", content: "Hello!" }]
 });
 
 console.log(response.choices[0].message.content);
 ```
 
-## API Reference
+---
 
-### Chat Completions
+## Chat Completions
 
-Create conversational AI interactions with support for system prompts, multi-turn conversations, and streaming responses.
+Talk to AI models.
 
 ```javascript
-const client = new GravixLayer({ apiKey: process.env.GRAVIXLAYER_API_KEY });
+import { GravixLayer } from 'gravixlayer';
 
-const response = await client.chat.completions.create({
-  model: "meta-llama/llama-3.1-8b-instruct",
-  messages: [
-    { role: "system", content: "You are a helpful assistant." },
-    { role: "user", content: "Explain quantum computing in simple terms." }
-  ],
-  temperature: 0.7,
-  max_tokens: 150
+const client = new GravixLayer({
+  apiKey: process.env.GRAVIXLAYER_API_KEY
 });
 
+// Simple chat
+const response = await client.chat.completions.create({
+  model: "mistralai/mistral-nemo-instruct-2407",
+  messages: [
+    { role: "system", content: "You are helpful." },
+    { role: "user", content: "What is JavaScript?" }
+  ]
+});
 console.log(response.choices[0].message.content);
 ```
 
-#### Streaming Chat
+**What it does:** Sends your message to AI and gets a response.
+
+### Streaming
+
+Get responses in real-time.
 
 ```javascript
+import { GravixLayer } from 'gravixlayer';
+
+const client = new GravixLayer({
+  apiKey: process.env.GRAVIXLAYER_API_KEY
+});
+
 const stream = await client.chat.completions.create({
-  model: "meta-llama/llama-3.1-8b-instruct",
-  messages: [{ role: "user", content: "Write a poem about coding" }],
+  model: "mistralai/mistral-nemo-instruct-2407",
+  messages: [{ role: "user", content: "Tell a story" }],
   stream: true
 });
 
@@ -79,24 +81,44 @@ for await (const chunk of stream) {
 }
 ```
 
-### Text Completions
+**What it does:** Shows AI response word-by-word as it's generated.
 
-Generate text continuations from prompts with fine-grained control over output.
+---
+
+## Text Completions
+
+Continue text from a prompt.
 
 ```javascript
-const completion = await client.completions.create({
-  model: "meta-llama/llama-3.1-8b-instruct",
-  prompt: "The benefits of renewable energy include",
-  max_tokens: 100,
-  temperature: 0.8
+import { GravixLayer } from 'gravixlayer';
+
+const client = new GravixLayer({
+  apiKey: process.env.GRAVIXLAYER_API_KEY
 });
 
-console.log(completion.choices[0].text);
+const response = await client.completions.create({
+  model: "mistralai/mistral-nemo-instruct-2407",
+  prompt: "The future of AI is",
+  max_tokens: 50
+});
+console.log(response.choices[0].text);
+```
+
+**What it does:** AI continues writing from your starting text.
+
+### Streaming Completions
+
+```javascript
+import { GravixLayer } from 'gravixlayer';
+
+const client = new GravixLayer({
+  apiKey: process.env.GRAVIXLAYER_API_KEY
+});
 
 const stream = await client.completions.create({
-  model: "meta-llama/llama-3.1-8b-instruct",
-  prompt: "Once upon a time in a digital world",
-  max_tokens: 200,
+  model: "mistralai/mistral-nemo-instruct-2407",
+  prompt: "Once upon a time",
+  max_tokens: 100,
   stream: true
 });
 
@@ -107,501 +129,533 @@ for await (const chunk of stream) {
 }
 ```
 
-### Embeddings
+**What it does:** Get text completions in real-time.
 
-Convert text into high-dimensional vectors for semantic search and similarity comparisons.
+---
+
+## Embeddings
+
+Convert text to numbers for comparison.
 
 ```javascript
-const embedding = await client.embeddings.create({
-  model: "microsoft/multilingual-e5-large",
-  input: "Machine learning is transforming industries"
+import { GravixLayer } from 'gravixlayer';
+
+const client = new GravixLayer({
+  apiKey: process.env.GRAVIXLAYER_API_KEY
 });
 
-console.log(`Embedding dimension: ${embedding.data[0].embedding.length}`);
-
-const batchEmbeddings = await client.embeddings.create({
+// Single text
+const response = await client.embeddings.create({
   model: "microsoft/multilingual-e5-large",
-  input: [
-    "Artificial intelligence",
-    "Machine learning",
-    "Deep learning",
-    "Neural networks"
-  ]
+  input: "Hello world"
+});
+console.log(`Vector size: ${response.data[0].embedding.length}`);
+
+// Multiple texts
+const batchResponse = await client.embeddings.create({
+  model: "microsoft/multilingual-e5-large",
+  input: ["Text 1", "Text 2", "Text 3"]
+});
+batchResponse.data.forEach((item, i) => {
+  console.log(`Text ${i+1}: ${item.embedding.length} dimensions`);
 });
 ```
 
-### File Management
+**What it does:** Turns text into a list of numbers. Similar texts have similar numbers.
 
-Upload, manage, and process various file formats including PDFs, documents, images, and data files.
+---
+
+## Files
+
+Upload and manage files.
 
 ```javascript
-const uploadResponse = await client.files.create({
-  file: "research-paper.pdf",
-  purpose: "assistants",
-  expires_after: 86400
+import { GravixLayer } from 'gravixlayer';
+import fs from 'fs';
+
+const client = new GravixLayer({
+  apiKey: process.env.GRAVIXLAYER_API_KEY
 });
 
-console.log(`Uploaded: ${uploadResponse.file_name}`);
+// Upload
+const fileStream = fs.createReadStream('document.pdf');
+const file = await client.files.upload({
+  file: fileStream,
+  purpose: 'assistants'
+});
+console.log(`Uploaded: ${file.id}`);
 
+// List all files
 const files = await client.files.list();
-files.data.forEach(file => {
-  console.log(`${file.filename} (${file.bytes} bytes) - ${file.purpose}`);
+files.data.forEach(f => {
+  console.log(`${f.filename} - ${f.bytes} bytes`);
 });
 
-const fileInfo = await client.files.retrieve("file-abc123");
-console.log(`File: ${fileInfo.filename}, Size: ${fileInfo.bytes} bytes`);
+// Get file info
+const fileInfo = await client.files.retrieve('file-id');
+console.log(`File: ${fileInfo.filename}`);
 
-const content = await client.files.content("file-abc123");
-console.log(`Downloaded ${content.length} bytes`);
+// Download file content
+const content = await client.files.content('file-id');
+fs.writeFileSync('downloaded.pdf', content);
 
-await client.files.delete("file-abc123");
+// Delete file
+const deleteResponse = await client.files.delete('file-id');
+console.log(deleteResponse.message);
 ```
 
-**Supported file formats**: PDF, TXT, DOCX, MD, PNG, JPG, JSON, CSV, and more  
-**Purposes**: `assistants`, `batch`, `fine-tune`, `vision`, `user_data`, `evals`
+**What it does:** Store files on the server to use with AI.
 
-### Vector Database
+---
 
-Build semantic search applications with vector indexes and similarity search capabilities.
+## Vector Database
+
+Search text by meaning, not just keywords.
 
 ```javascript
+import { GravixLayer } from 'gravixlayer';
+
+const client = new GravixLayer({
+  apiKey: process.env.GRAVIXLAYER_API_KEY
+});
+
+// Create index
 const index = await client.vectors.indexes.create({
-  name: "knowledge-base",
+  name: 'my-docs',
   dimension: 1536,
-  metric: "cosine",
-  metadata: { description: "Company knowledge base" }
+  metric: 'cosine'
 });
+console.log(`Created index: ${index.id}`);
 
-console.log(`Created index: ${index.name} with ${index.dimension} dimensions`);
-
+// Add single text
 const vectors = client.vectors.index(index.id);
-
 await vectors.upsertText({
-  text: "Our company offers 24/7 customer support with live chat",
-  model: "microsoft/multilingual-e5-large",
-  id: "support-info-1",
-  metadata: { 
-    category: "support",
-    department: "customer-service"
-  }
+  text: 'JavaScript is a programming language',
+  model: 'microsoft/multilingual-e5-large',
+  id: 'doc1',
+  metadata: { category: 'programming' }
 });
 
+// Add multiple texts
 await vectors.batchUpsertText([
   {
-    text: "We provide free shipping on orders over $50",
-    model: "microsoft/multilingual-e5-large",
-    id: "shipping-1",
-    metadata: { category: "shipping" }
+    text: 'Python is for data science',
+    model: 'microsoft/multilingual-e5-large',
+    id: 'doc2',
+    metadata: { category: 'programming' }
   },
   {
-    text: "Returns are accepted within 30 days of purchase",
-    model: "microsoft/multilingual-e5-large", 
-    id: "returns-1",
-    metadata: { category: "returns" }
+    text: 'React is a JavaScript library',
+    model: 'microsoft/multilingual-e5-large',
+    id: 'doc3',
+    metadata: { category: 'web' }
   }
 ]);
 
+// Search by text
 const results = await vectors.searchText({
-  query: "How can I get help with my order?",
-  model: "microsoft/multilingual-e5-large",
-  top_k: 3,
-  filter: { category: "support" }
+  query: 'coding languages',
+  model: 'microsoft/multilingual-e5-large',
+  top_k: 5
+});
+results.hits.forEach(hit => {
+  console.log(`${hit.text} (score: ${hit.score.toFixed(3)})`);
 });
 
-results.hits.forEach(hit => {
-  console.log(`${hit.text} (Score: ${hit.score.toFixed(3)})`);
+// Search with filter
+const filteredResults = await vectors.searchText({
+  query: 'programming',
+  model: 'microsoft/multilingual-e5-large',
+  top_k: 3,
+  filter: { category: 'programming' }
 });
+
+// List all indexes
+const indexes = await client.vectors.indexes.list();
+indexes.indexes.forEach(idx => {
+  console.log(`${idx.name}: ${idx.dimension} dimensions`);
+});
+
+// Delete index
+await client.vectors.indexes.delete(index.id);
 ```
 
-**Supported metrics**: `cosine`, `euclidean`, `dot_product`
+**What it does:** Finds similar text based on meaning, not exact words.
 
-### Memory Management
+---
 
-Build intelligent applications that remember user preferences and context across conversations. GravixLayer provides both asynchronous and synchronous memory APIs for different use cases.
+## Memory
 
-#### Asynchronous Memory (Recommended)
+Remember user information across conversations.
 
 ```javascript
-const addResult = await client.memory.add({
-  messages: "I'm a React developer who prefers TypeScript and dark themes",
-  user_id: "user-123",
-  metadata: { category: "preferences", source: "onboarding" },
+import { GravixLayer, Memory } from 'gravixlayer';
+
+const client = new GravixLayer({
+  apiKey: process.env.GRAVIXLAYER_API_KEY
+});
+
+// Setup memory
+const memory = new Memory(
+  client,
+  'microsoft/multilingual-e5-large',
+  'mistralai/mistral-nemo-instruct-2407',
+  'user-memories',
+  'AWS',
+  'us-east-1'
+);
+
+// Add memory
+const result = await memory.add({
+  messages: 'User loves pizza and Italian food',
+  user_id: 'user123'
+});
+console.log(`Added ${result.results.length} memories`);
+
+// Add with AI inference
+const inferResult = await memory.add({
+  messages: "I'm a software engineer who loves JavaScript",
+  user_id: 'user123',
   infer: true
 });
+inferResult.results.forEach(mem => {
+  console.log(`Extracted: ${mem.memory}`);
+});
 
-console.log(`Added ${addResult.results.length} memories`);
-
-const searchResult = await client.memory.search({
-  query: "What does the user prefer for development?",
-  user_id: "user-123",
+// Search memories
+const searchResults = await memory.search({
+  query: 'What food does user like?',
+  user_id: 'user123',
   limit: 5
 });
-
-searchResult.results.forEach(memory => {
-  console.log(`Memory: ${memory.memory} (Relevance: ${memory.score.toFixed(3)})`);
+searchResults.results.forEach(item => {
+  console.log(`${item.memory} (score: ${item.score.toFixed(3)})`);
 });
 
-// Get all memories for analytics
-const allMemories = await client.memory.getAll({
-  user_id: "user-123",
+// Get all memories
+const allMemories = await memory.getAll({
+  user_id: 'user123',
   limit: 50
 });
-
-console.log(`User has ${allMemories.results.length} total memories`);
-
-// Update specific memory
-await client.memory.update({
-  memory_id: "memory-abc123",
-  user_id: "user-123", 
-  data: "Updated: Prefers React with TypeScript and Next.js framework"
-});
-
-// Clean up old memories
-await client.memory.delete({
-  memory_id: "memory-abc123",
-  user_id: "user-123"
-});
-```
-
-#### Synchronous Memory
-
-For applications that require synchronous operations or compatibility with non-async environments:
-
-```javascript
-// Access synchronous memory API
-const syncMemory = client.syncMemory;
-
-// Add memories synchronously
-const result = syncMemory.add("I love pizza and Italian food", "user-123");
-console.log(`Added memory: ${result.results[0].memory}`);
-
-// Search memories synchronously
-const memories = syncMemory.search("food preferences", "user-123", 10);
-console.log(`Found ${memories.results.length} memories`);
-
-// Get all memories synchronously
-const allMemories = syncMemory.getAll("user-123", 50);
 console.log(`Total memories: ${allMemories.results.length}`);
 
-// Configuration management (works for both async and sync)
-syncMemory.switchConfiguration({
-  embeddingModel: "microsoft/multilingual-e5-large",
-  indexName: "custom_memories",
-  cloudProvider: "AWS",
-  region: "us-west-2"
+// Update memory
+await memory.update({
+  memory_id: 'memory-id',
+  user_id: 'user123',
+  data: 'Updated: User prefers vegetarian food'
 });
 
-const config = syncMemory.getCurrentConfiguration();
-console.log(`Current embedding model: ${config.embedding_model}`);
+// Delete specific memory
+await memory.delete({
+  memory_id: 'memory-id',
+  user_id: 'user123'
+});
 
-// Reset to defaults
-syncMemory.resetToDefaults();
+// Delete all memories for user
+await memory.deleteAll({ user_id: 'user123' });
 ```
 
-#### Advanced Memory Operations
+**What it does:** Stores facts about users so AI can remember them later.
 
-Both async and sync memory support advanced operations:
+---
+
+## Sandbox
+
+Run code safely in isolated environments.
 
 ```javascript
-// Direct memory API (async example)
-const memoryEntry = await client.memory.addMemory(
-  "User prefers dark mode UI",
-  "user-123",
-  MemoryType.FACTUAL,
-  { category: "ui_preferences" }
-);
+import { GravixLayer, Sandbox } from 'gravixlayer';
+import fs from 'fs';
 
-// Get memories by type
-const factualMemories = await client.memory.getMemoriesByType(
-  "user-123", 
-  MemoryType.FACTUAL, 
-  20
-);
+const client = new GravixLayer({
+  apiKey: process.env.GRAVIXLAYER_API_KEY
+});
 
-// Get memory statistics
-const stats = await client.memory.getStats("user-123");
-console.log(`Total: ${stats.total_memories}, Factual: ${stats.factual_count}`);
+// Create sandbox
+const sandbox = await Sandbox.create({
+  template: 'node-base-v1',
+  timeout: 600,
+  metadata: { project: 'my-app' }
+});
+console.log(`Sandbox ID: ${sandbox.id}`);
 
-// Cleanup expired working memory
-const cleanedCount = await client.memory.cleanupWorkingMemory("user-123");
-console.log(`Cleaned up ${cleanedCount} expired memories`);
+// Run code
+const result = await sandbox.runCode("console.log('Hello from sandbox!');\nconsole.log(2 + 2);");
+console.log('Output:', result.logs.stdout);
+console.log('Errors:', result.logs.stderr);
+console.log('Exit code:', result.exitCode);
 
-// List all memories with sorting
-const sortedMemories = await client.memory.listAllMemories(
-  "user-123",
-  100,
-  "created_at",
-  false // descending
-);
+// Run shell command
+const cmdResult = await sandbox.runCommand('ls -la');
+console.log(cmdResult.logs.stdout);
+
+// Write file
+await sandbox.files.write({
+  path: '/home/user/script.js',
+  content: "console.log('Hello World');"
+});
+
+// Read file
+const content = await sandbox.files.read({
+  path: '/home/user/script.js'
+});
+console.log('File content:', content);
+
+// List files
+const files = await sandbox.files.list({
+  path: '/home/user'
+});
+files.forEach(file => {
+  console.log(`${file.name} - ${file.size} bytes`);
+});
+
+// Upload file to sandbox
+const fileStream = fs.createReadStream('local_file.js');
+await sandbox.files.upload({
+  path: '/home/user/uploaded.js',
+  file: fileStream
+});
+
+// Create directory
+await sandbox.files.mkdir({
+  path: '/home/user/myproject'
+});
+
+// Delete file
+await sandbox.files.delete({
+  path: '/home/user/script.js'
+});
+
+// Get sandbox info
+const info = await sandbox.getInfo();
+console.log(`Status: ${info.status}`);
+
+// List all sandboxes
+const sandboxes = await client.sandbox.list();
+sandboxes.forEach(sb => {
+  console.log(`${sb.id}: ${sb.status}`);
+});
+
+// Extend timeout
+await sandbox.setTimeout({ timeout: 1200 });
+
+// List available templates
+const templates = await Sandbox.templates.list();
+templates.forEach(template => {
+  console.log(`${template.name}: ${template.description}`);
+});
+
+// Kill sandbox
+await sandbox.kill();
 ```
 
-**Memory types**: Factual, episodic, working, semantic  
-**Features**: AI inference, semantic search, user isolation, configuration management  
-**APIs**: Both asynchronous and synchronous support
+**What it does:** Runs code in a safe, isolated environment that can't harm your system.
 
-#### Choosing Between Async and Sync Memory
+---
 
-| Feature              | Async Memory (`client.memory`) | Sync Memory (`client.syncMemory`)      |
-| -------------------- | ------------------------------ | -------------------------------------- |
-| **Performance**      | Full network operations        | Simplified operations for testing      |
-| **Use Case**         | Production applications        | Testing, compatibility, simple scripts |
-| **API Calls**        | Real HTTP requests             | Logging-based simulation               |
-| **Configuration**    | Dynamic per-operation          | Global configuration only              |
-| **Index Management** | Full index listing/switching   | Basic index switching                  |
-| **Best For**         | Web apps, servers, production  | Scripts, testing, legacy compatibility |
+## Deployments
 
-**Recommendation**: Use async memory (`client.memory`) for production applications. Use sync memory (`client.syncMemory`) for testing, simple scripts, or when working in environments that don't support async/await.
-
-###  Deployments
-
-Deploy and manage custom model instances with auto-scaling capabilities.
+Deploy your own model instances.
 
 ```javascript
-// Create a new deployment
+import { GravixLayer } from 'gravixlayer';
+
+const client = new GravixLayer({
+  apiKey: process.env.GRAVIXLAYER_API_KEY
+});
+
+// Create deployment
 const deployment = await client.deployments.create({
-  deployment_name: "production-chat-bot",
-  model_name: "meta-llama/llama-3.1-8b-instruct",
-  hardware: "nvidia-t4-16gb-pcie_1",
+  deployment_name: 'my-chatbot',
+  model_name: 'mistralai/mistral-nemo-instruct-2407',
+  hardware: 'nvidia-t4-16gb-pcie_1',
   min_replicas: 1,
-  max_replicas: 5
+  max_replicas: 3
 });
-
-console.log(`Deployment created: ${deployment.deployment_name}`);
+console.log(`Deployment ID: ${deployment.id}`);
 
 // List all deployments
 const deployments = await client.deployments.list();
 deployments.forEach(dep => {
-  console.log(`${dep.name}: ${dep.status} (${dep.replicas} replicas)`);
+  console.log(`${dep.name}: ${dep.status}`);
 });
 
-// Monitor deployment status
-const status = await client.deployments.get("deployment-id");
-console.log(`Status: ${status.status}, Endpoint: ${status.endpoint}`);
+// Get deployment info
+const depInfo = await client.deployments.get('deployment-id');
+console.log(`Status: ${depInfo.status}`);
+console.log(`Endpoint: ${depInfo.endpoint}`);
 
-// Scale deployment
-await client.deployments.update("deployment-id", {
+// Update deployment
+await client.deployments.update('deployment-id', {
   min_replicas: 2,
-  max_replicas: 10
+  max_replicas: 5
 });
 
-// Clean up
-await client.deployments.delete("deployment-id");
-```
+// Delete deployment
+await client.deployments.delete('deployment-id');
 
-### Accelerators
-
-Access available GPU hardware and compute resources.
-
-```javascript
-// List available accelerators
+// List available hardware
 const accelerators = await client.accelerators.list();
 accelerators.forEach(acc => {
-  console.log(`${acc.name}: ${acc.memory}GB, $${acc.price_per_hour}/hour`);
-});
-
-// Get specific accelerator details
-const accelerator = await client.accelerators.get("nvidia-a100-80gb");
-console.log(`${accelerator.name}: ${accelerator.compute_capability}`);
-```
-
-##  CLI Usage
-
-Comprehensive command-line interface for all GravixLayer operations.
-
-### Installation
-```bash
-npm install -g gravixlayer
-```
-
-### Chat & Completions
-```bash
-# Interactive chat
-gravixlayer chat --model "meta-llama/llama-3.1-8b-instruct" --user "Explain quantum computing"
-
-# Text completion
-gravixlayer chat --model "meta-llama/llama-3.1-8b-instruct" --prompt "The future of AI is" --mode completions
-
-# Streaming responses
-gravixlayer chat --model "meta-llama/llama-3.1-8b-instruct" --user "Write a poem" --stream
-```
-
-### File Operations
-```bash
-# Upload files
-gravixlayer files upload research.pdf --purpose assistants
-gravixlayer files upload dataset.csv --purpose fine-tune --expires-after 86400
-
-# Manage files
-gravixlayer files list
-gravixlayer files info file-abc123
-gravixlayer files download file-abc123 --output downloaded.pdf
-gravixlayer files delete file-abc123
-```
-
-### Memory Management
-```bash
-# Add memories
-gravixlayer memory add user-123 --message "I'm a React developer who loves TypeScript"
-
-# Search memories
-gravixlayer memory search user-123 --query "development preferences" --limit 5
-
-# List and manage memories
-gravixlayer memory list user-123 --limit 10
-gravixlayer memory update user-123 memory-abc123 --data "Updated preference"
-gravixlayer memory delete user-123 memory-abc123
-
-# Configuration management
-gravixlayer memory config --embedding-model "microsoft/multilingual-e5-large"
-gravixlayer memory config --index-name "custom_memories" --cloud-provider "AWS"
-gravixlayer memory config --reset-defaults
-
-# Advanced operations
-gravixlayer memory stats user-123
-gravixlayer memory cleanup user-123 --type working
-gravixlayer memory list-indexes
-```
-
-### Vector Database
-```bash
-gravixlayer vectors index create --name "knowledge-base" --dimension 1536 --metric cosine
-gravixlayer vectors index list
-
-gravixlayer vectors vector upsert-text <index-id> --text "Customer support info" --model "microsoft/multilingual-e5-large"
-gravixlayer vectors vector search-text <index-id> --query "help with orders" --model "microsoft/multilingual-e5-large" --top-k 5
-```
-
-### Deployments
-```bash
-gravixlayer deployments list
-gravixlayer deployments create --deployment-name "prod-bot" --model-name "meta-llama/llama-3.1-8b-instruct" --gpu-model "NVIDIA_T4_16GB"
-gravixlayer deployments hardware --list
-```
-
-## Configuration
-
-### Environment Variables
-```bash
-export GRAVIXLAYER_API_KEY="your-api-key-here"
-```
-
-### Client Options
-```javascript
-const client = new GravixLayer({
-  apiKey: process.env.GRAVIXLAYER_API_KEY,
-  baseURL: 'https://api.gravixlayer.com',
-  timeout: 30000,
-  maxRetries: 3,
-  organization: 'your-org-id',
-  project: 'your-project-id'
+  console.log(`${acc.name}: ${acc.memory}GB`);
 });
 ```
 
-## Error Handling
+**What it does:** Runs a dedicated model instance just for you.
 
-Robust error handling with specific error types for different scenarios.
-
-```javascript
-import { 
-  GravixLayer, 
-  GravixLayerError, 
-  GravixLayerAuthenticationError,
-  GravixLayerRateLimitError,
-  GravixLayerAPIError
-} from 'gravixlayer';
-
-try {
-  const response = await client.chat.completions.create({
-    model: "meta-llama/llama-3.1-8b-instruct",
-    messages: [{ role: "user", content: "Hello!" }]
-  });
-} catch (error) {
-  if (error instanceof GravixLayerAuthenticationError) {
-    console.error('Authentication failed - check your API key');
-  } else if (error instanceof GravixLayerRateLimitError) {
-    console.error('Rate limit exceeded - please wait before retrying');
-  } else if (error instanceof GravixLayerAPIError) {
-    console.error(`API Error: ${error.message} (Status: ${error.status})`);
-  } else if (error instanceof GravixLayerError) {
-    console.error(`SDK Error: ${error.message}`);
-  } else {
-    console.error('Unexpected error:', error);
-  }
-}
-```
+---
 
 ## TypeScript Support
 
-Full TypeScript support with comprehensive type definitions and IntelliSense.
+Full type definitions included.
 
 ```typescript
 import { 
   GravixLayer, 
-  SyncMemory,
   ChatCompletion, 
   ChatCompletionCreateParams,
-  FileObject,
-  VectorIndex,
-  MemorySearchResult,
-  MemoryType,
-  MemoryEntry
+  EmbeddingResponse,
+  FileObject
 } from 'gravixlayer';
 
 const client = new GravixLayer({
-  apiKey: process.env.GRAVIXLAYER_API_KEY,
+  apiKey: process.env.GRAVIXLAYER_API_KEY
 });
 
 const params: ChatCompletionCreateParams = {
-  model: "meta-llama/llama-3.1-8b-instruct",
-  messages: [
-    { role: "system", content: "You are a helpful assistant." },
-    { role: "user", content: "Explain TypeScript benefits" }
-  ],
-  temperature: 0.7,
-  max_tokens: 150
+  model: "mistralai/mistral-nemo-instruct-2407",
+  messages: [{ role: "user", content: "Hello" }],
+  temperature: 0.7
 };
 
-const completion: ChatCompletion = await client.chat.completions.create(params);
-console.log(completion.choices[0].message.content);
+const response: ChatCompletion = await client.chat.completions.create(params);
+console.log(response.choices[0].message.content);
 
-const file: FileObject = await client.files.retrieve("file-abc123");
-console.log(`File: ${file.filename}, Size: ${file.bytes} bytes`);
-
-const index: VectorIndex = await client.vectors.indexes.create({
-  name: "typed-index",
-  dimension: 1536,
-  metric: "cosine"
+// Embeddings with types
+const embeddingResponse: EmbeddingResponse = await client.embeddings.create({
+  model: "microsoft/multilingual-e5-large",
+  input: "Hello"
 });
 
-const memories: MemorySearchResult = await client.memory.search({
-  query: "user preferences",
-  user_id: "user-123",
-  limit: 10
-});
-
-// Synchronous memory with TypeScript
-const syncMemory: SyncMemory = client.syncMemory;
-const syncResult = syncMemory.add("User prefers TypeScript", "user-123");
-const config = syncMemory.getCurrentConfiguration();
-
-// Memory types and entries
-const memoryEntry: MemoryEntry = syncMemory.addMemory(
-  "User loves React development",
-  "user-123",
-  MemoryType.FACTUAL
-);
+// Files with types
+const file: FileObject = await client.files.retrieve('file-id');
 ```
 
-
-
-## License
-
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-
-## Support & Community
-
-- **Documentation**: [docs.gravixlayer.com](https://docs.gravixlayer.com)
-- **Issues**: [GitHub Issues](https://github.com/gravixlayer/gravixlayer-node/issues)
+**What it does:** Provides autocomplete and type checking in your editor.
 
 ---
 
+## CLI Usage
+
+Use from command line.
+
+```bash
+# Set API key
+export GRAVIXLAYER_API_KEY="your-api-key"
+
+# Chat
+gravixlayer chat --model "mistralai/mistral-nemo-instruct-2407" --user "Hello!"
+gravixlayer chat --model "mistralai/mistral-nemo-instruct-2407" --user "Tell a story" --stream
+
+# Files
+gravixlayer files upload document.pdf --purpose assistants
+gravixlayer files list
+gravixlayer files info file-abc123
+gravixlayer files download file-abc123 --output downloaded.pdf
+gravixlayer files delete file-abc123
+
+# Deployments
+gravixlayer deployments create --deployment-name "my-bot" --model-name "mistralai/mistral-nemo-instruct-2407" --gpu-model "NVIDIA_T4_16GB"
+gravixlayer deployments list
+gravixlayer deployments delete <deployment-id>
+
+# Vector database
+gravixlayer vectors index create --name "my-index" --dimension 1536 --metric cosine
+gravixlayer vectors index list
+```
+
+---
+
+## Configuration
+
+```javascript
+import { GravixLayer } from 'gravixlayer';
+
+// Basic configuration
+const client = new GravixLayer({
+  apiKey: process.env.GRAVIXLAYER_API_KEY
+});
+
+// Advanced configuration
+const advancedClient = new GravixLayer({
+  apiKey: 'your-api-key',
+  baseURL: 'https://api.gravixlayer.com/v1/inference',
+  timeout: 60000,
+  maxRetries: 3,
+  headers: { 'Custom-Header': 'value' }
+});
+```
+
+Set API key in environment:
+```bash
+export GRAVIXLAYER_API_KEY="your-api-key"
+```
+
+---
+
+## Error Handling
+
+```javascript
+import { 
+  GravixLayer,
+  GravixLayerError,
+  GravixLayerAuthenticationError,
+  GravixLayerRateLimitError,
+  GravixLayerServerError,
+  GravixLayerBadRequestError
+} from 'gravixlayer';
+
+const client = new GravixLayer({
+  apiKey: process.env.GRAVIXLAYER_API_KEY
+});
+
+try {
+  const response = await client.chat.completions.create({
+    model: "mistralai/mistral-nemo-instruct-2407",
+    messages: [{ role: "user", content: "Hello" }]
+  });
+} catch (error) {
+  if (error instanceof GravixLayerAuthenticationError) {
+    console.error('Invalid API key');
+  } else if (error instanceof GravixLayerRateLimitError) {
+    console.error('Too many requests - please wait');
+  } else if (error instanceof GravixLayerBadRequestError) {
+    console.error(`Bad request: ${error.message}`);
+  } else if (error instanceof GravixLayerServerError) {
+    console.error(`Server error: ${error.message}`);
+  } else if (error instanceof GravixLayerError) {
+    console.error(`SDK error: ${error.message}`);
+  }
+}
+```
+
+---
+
+## Learn More
+
+📚 **[Full Documentation](https://docs.gravixlayer.com/sdk/introduction/introduction)**
+
+- Detailed guides and tutorials
+- API reference
+- Advanced examples
+- Best practices
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/gravixlayer/gravixlayer-node/issues)
+- **Email**: info@gravixlayer.com
+
+## License
+
+Apache License 2.0

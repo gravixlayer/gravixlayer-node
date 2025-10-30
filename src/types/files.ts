@@ -35,14 +35,7 @@ export interface FileCreateParams {
   filename?: string;
 }
 
-export type FilePurpose = 
-  | 'assistants'
-  | 'batch'
-  | 'batch_output'
-  | 'fine-tune'
-  | 'vision'
-  | 'user_data'
-  | 'evals';
+export type FilePurpose = 'assistants' | 'batch' | 'batch_output' | 'fine-tune' | 'vision' | 'user_data' | 'evals';
 
 export const FILE_PURPOSES: FilePurpose[] = [
   'assistants',
@@ -51,5 +44,5 @@ export const FILE_PURPOSES: FilePurpose[] = [
   'fine-tune',
   'vision',
   'user_data',
-  'evals'
+  'evals',
 ];

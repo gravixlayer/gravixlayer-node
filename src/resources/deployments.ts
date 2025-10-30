@@ -12,7 +12,7 @@ export class Deployments {
       gpu_count: params.gpu_count || 1,
       min_replicas: params.min_replicas || 1,
       max_replicas: params.max_replicas || 1,
-      model_name: params.model_name
+      model_name: params.model_name,
     };
 
     // Use a different base URL for deployments API

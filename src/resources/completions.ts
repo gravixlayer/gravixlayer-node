@@ -1,6 +1,12 @@
 import { GravixLayer } from '../client';
 import { Completion, CompletionCreateParams, CompletionChoice, CompletionUsage } from '../types/completions';
 
+/**
+ * Completions resource for prompt-based text generation.
+ *
+ * Generates text continuations from prompts with fine-grained control
+ * over output parameters.
+ */
 export class Completions {
   constructor(private client: GravixLayer) {}
 
@@ -10,7 +16,7 @@ export class Completions {
     const data: any = {
       model: params.model,
       prompt: params.prompt,
-      stream: params.stream || false
+      stream: params.stream || false,
     };
 
     if (params.max_tokens !== undefined) data.max_tokens = params.max_tokens;
@@ -37,7 +43,7 @@ export class Completions {
 
   private async *_createStream(data: any): AsyncIterable<Completion> {
     const response = await this.client._makeRequest('POST', 'completions', data, true);
-    
+
     if (!response.body) {
       throw new Error('No response body for streaming');
     }
@@ -49,7 +55,7 @@ export class Completions {
     try {
       // For node-fetch, response.body is a ReadableStream
       const reader = response.body as any;
-      
+
       // Use async iteration if available
       if (reader[Symbol.asyncIterator]) {
         for await (const chunk of reader) {
@@ -59,25 +65,25 @@ export class Completions {
 
           for (let line of lines) {
             line = line.trim();
-            
+
             // Handle SSE format
             if (line.startsWith('data: ')) {
               line = line.slice(6);
             }
-            
+
             // Skip empty lines and [DONE] marker
             if (!line || line === '[DONE]') {
               continue;
             }
-            
+
             try {
               const chunkData = JSON.parse(line);
               const parsedChunk = this._parseResponse(chunkData, true);
-              
+
               if (parsedChunk.choices && parsedChunk.choices.length > 0) {
                 yield parsedChunk;
               }
-            } catch (error) {
+            } catch {
               // Skip malformed JSON
               continue;
             }
@@ -97,21 +103,21 @@ export class Completions {
 
             for (let line of lines) {
               line = line.trim();
-              
+
               // Handle SSE format
               if (line.startsWith('data: ')) {
                 line = line.slice(6);
               }
-              
+
               // Skip empty lines and [DONE] marker
               if (!line || line === '[DONE]') {
                 continue;
               }
-              
+
               try {
                 const chunkData = JSON.parse(line);
                 const parsedChunk = this._parseResponse(chunkData, true);
-                
+
                 if (parsedChunk.choices && parsedChunk.choices.length > 0) {
                   yield parsedChunk;
                 }
@@ -153,7 +159,7 @@ export class Completions {
           text,
           index: choiceData.index || 0,
           logprobs: choiceData.logprobs || null,
-          finish_reason: choiceData.finish_reason || null
+          finish_reason: choiceData.finish_reason || null,
         };
         choices.push(choice);
       }
@@ -173,7 +179,7 @@ export class Completions {
       choices.push({
         text,
         index: 0,
-        finish_reason: isStream ? null : 'stop'
+        finish_reason: isStream ? null : 'stop',
       });
     }
 
@@ -183,7 +189,7 @@ export class Completions {
       usage = {
         prompt_tokens: respData.usage.prompt_tokens || 0,
         completion_tokens: respData.usage.completion_tokens || 0,
-        total_tokens: respData.usage.total_tokens || 0
+        total_tokens: respData.usage.total_tokens || 0,
       };
     }
 
@@ -193,7 +199,7 @@ export class Completions {
       created: respData.created || Math.floor(Date.now() / 1000),
       model: respData.model || 'unknown',
       choices,
-      usage
+      usage,
     };
   }
 }

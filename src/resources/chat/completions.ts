@@ -1,13 +1,13 @@
 import { GravixLayer } from '../../client';
-import { 
-  ChatCompletion, 
-  ChatCompletionCreateParams, 
-  ChatCompletionChoice, 
-  ChatCompletionMessage, 
-  ChatCompletionUsage, 
+import {
+  ChatCompletion,
+  ChatCompletionCreateParams,
+  ChatCompletionChoice,
+  ChatCompletionMessage,
+  ChatCompletionUsage,
   ChatCompletionDelta,
   FunctionCall,
-  ToolCall 
+  ToolCall,
 } from '../../types/chat';
 
 export class ChatCompletions {
@@ -17,26 +17,26 @@ export class ChatCompletions {
   async create(params: ChatCompletionCreateParams & { stream: true }): Promise<AsyncIterable<ChatCompletion>>;
   async create(params: ChatCompletionCreateParams): Promise<ChatCompletion | AsyncIterable<ChatCompletion>> {
     // Convert message objects to plain objects if needed
-    const serializedMessages = params.messages.map(msg => {
+    const serializedMessages = params.messages.map((msg) => {
       if (typeof msg === 'object' && msg !== null) {
         const msgDict: any = {
           role: msg.role,
-          content: msg.content
+          content: msg.content,
         };
-        
+
         if (msg.name) msgDict.name = msg.name;
         if (msg.tool_call_id) msgDict.tool_call_id = msg.tool_call_id;
         if (msg.tool_calls) {
-          msgDict.tool_calls = msg.tool_calls.map(toolCall => ({
+          msgDict.tool_calls = msg.tool_calls.map((toolCall) => ({
             id: toolCall.id,
             type: toolCall.type,
             function: {
               name: toolCall.function.name,
-              arguments: toolCall.function.arguments
-            }
+              arguments: toolCall.function.arguments,
+            },
           }));
         }
-        
+
         return msgDict;
       }
       return msg;
@@ -45,7 +45,7 @@ export class ChatCompletions {
     const data: any = {
       model: params.model,
       messages: serializedMessages,
-      stream: params.stream || false
+      stream: params.stream || false,
     };
 
     if (params.temperature !== undefined) data.temperature = params.temperature;
@@ -68,7 +68,7 @@ export class ChatCompletions {
 
   private async *_createStream(data: any): AsyncIterable<ChatCompletion> {
     const response = await this.client._makeRequest('POST', 'chat/completions', data, true);
-    
+
     if (!response.body) {
       throw new Error('No response body for streaming');
     }
@@ -80,7 +80,7 @@ export class ChatCompletions {
     try {
       // For node-fetch, response.body is a ReadableStream
       const reader = response.body as any;
-      
+
       // Use async iteration if available
       if (reader[Symbol.asyncIterator]) {
         for await (const chunk of reader) {
@@ -90,23 +90,23 @@ export class ChatCompletions {
 
           for (let line of lines) {
             line = line.trim();
-            
+
             // Handle SSE format
             if (line.startsWith('data: ')) {
               line = line.slice(6);
             }
-            
+
             // Skip empty lines and [DONE] marker
             if (!line || line === '[DONE]') {
               continue;
             }
-            
+
             try {
               const chunkData = JSON.parse(line);
-              
+
               if (chunkData && typeof chunkData === 'object') {
                 const parsedChunk = this._parseResponse(chunkData, true);
-                
+
                 if (parsedChunk.choices && parsedChunk.choices.length > 0) {
                   yield parsedChunk;
                 }
@@ -131,23 +131,23 @@ export class ChatCompletions {
 
             for (let line of lines) {
               line = line.trim();
-              
+
               // Handle SSE format
               if (line.startsWith('data: ')) {
                 line = line.slice(6);
               }
-              
+
               // Skip empty lines and [DONE] marker
               if (!line || line === '[DONE]') {
                 continue;
               }
-              
+
               try {
                 const chunkData = JSON.parse(line);
-                
+
                 if (chunkData && typeof chunkData === 'object') {
                   const parsedChunk = this._parseResponse(chunkData, true);
-                  
+
                   if (parsedChunk.choices && parsedChunk.choices.length > 0) {
                     yield parsedChunk;
                   }
@@ -200,12 +200,12 @@ export class ChatCompletions {
                   const functionData = toolCallData.function || {};
                   const functionCall: FunctionCall = {
                     name: functionData.name || '',
-                    arguments: functionData.arguments || '{}'
+                    arguments: functionData.arguments || '{}',
                   };
                   const toolCall: ToolCall = {
                     id: toolCallData.id || '',
                     type: toolCallData.type || 'function',
-                    function: functionCall
+                    function: functionCall,
                   };
                   deltaToolCalls.push(toolCall);
                 }
@@ -222,21 +222,20 @@ export class ChatCompletions {
           const deltaObj: ChatCompletionDelta = {
             role: deltaRole,
             content: deltaContent,
-            tool_calls: deltaToolCalls || undefined
+            tool_calls: deltaToolCalls || undefined,
           };
 
-          // Create message object (for compatibility)
           const msg: ChatCompletionMessage = {
             role: deltaRole || 'assistant',
             content: deltaContent || '',
-            tool_calls: deltaToolCalls || undefined
+            tool_calls: deltaToolCalls || undefined,
           };
 
           choices.push({
             index: choiceData.index || 0,
             message: msg,
             delta: deltaObj,
-            finish_reason: choiceData.finish_reason || null
+            finish_reason: choiceData.finish_reason || null,
           });
         } else {
           // For non-streaming, use message object
@@ -251,12 +250,12 @@ export class ChatCompletions {
                 const functionData = toolCallData.function || {};
                 const functionCall: FunctionCall = {
                   name: functionData.name || '',
-                  arguments: functionData.arguments || '{}'
+                  arguments: functionData.arguments || '{}',
                 };
                 const toolCall: ToolCall = {
                   id: toolCallData.id || '',
                   type: toolCallData.type || 'function',
-                  function: functionCall
+                  function: functionCall,
                 };
                 toolCalls.push(toolCall);
               }
@@ -267,13 +266,13 @@ export class ChatCompletions {
             role: messageData.role || 'assistant',
             content: messageData.content || null,
             tool_calls: toolCalls,
-            tool_call_id: messageData.tool_call_id
+            tool_call_id: messageData.tool_call_id,
           };
 
           choices.push({
             index: choiceData.index || 0,
             message: msg,
-            finish_reason: choiceData.finish_reason || null
+            finish_reason: choiceData.finish_reason || null,
           });
         }
       }
@@ -295,14 +294,14 @@ export class ChatCompletions {
           index: 0,
           message: msg,
           delta: deltaObj,
-          finish_reason: null
+          finish_reason: null,
         });
       } else {
         const msg: ChatCompletionMessage = { role: 'assistant', content };
         choices.push({
           index: 0,
           message: msg,
-          finish_reason: 'stop'
+          finish_reason: 'stop',
         });
       }
     }
@@ -313,7 +312,7 @@ export class ChatCompletions {
       usage = {
         prompt_tokens: respData.usage.prompt_tokens || 0,
         completion_tokens: respData.usage.completion_tokens || 0,
-        total_tokens: respData.usage.total_tokens || 0
+        total_tokens: respData.usage.total_tokens || 0,
       };
     }
 
@@ -323,7 +322,7 @@ export class ChatCompletions {
       created: respData.created || Math.floor(Date.now() / 1000),
       model: respData.model || 'unknown',
       choices,
-      usage
+      usage,
     };
   }
 }

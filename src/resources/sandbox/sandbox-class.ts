@@ -3,11 +3,7 @@
  */
 import { GravixLayer } from '../../client';
 import { Execution } from '../../types/sandbox';
-import type { 
-  Sandbox as SandboxType, 
-  CodeRunResponse, 
-  CommandRunResponse 
-} from '../../types/sandbox';
+import type { Sandbox as SandboxType, CodeRunResponse, CommandRunResponse } from '../../types/sandbox';
 
 export class Sandbox implements SandboxType {
   sandbox_id: string;
@@ -59,7 +55,7 @@ export class Sandbox implements SandboxType {
   }): Promise<Sandbox> {
     const client = new GravixLayer({
       apiKey: options?.apiKey,
-      baseURL: options?.baseURL
+      baseURL: options?.baseURL,
     });
 
     const sandboxResponse = await client.sandbox.sandboxes.create({
@@ -67,12 +63,12 @@ export class Sandbox implements SandboxType {
       region: options?.region || 'eu-west-1',
       template: options?.template || 'python-base-v1',
       timeout: options?.timeout || 300,
-      metadata: options?.metadata || {}
+      metadata: options?.metadata || {},
     });
 
     const instance = new Sandbox(sandboxResponse);
     instance._client = client;
-    instance._timeoutSeconds = options?.timeout || 300;  // Store the original timeout value
+    instance._timeoutSeconds = options?.timeout || 300; // Store the original timeout value
     return instance;
   }
 
@@ -88,11 +84,7 @@ export class Sandbox implements SandboxType {
       throw new Error('Client not initialized. Use Sandbox.create() to create a new instance.');
     }
 
-    const response = await this._client.sandbox.sandboxes.runCode(
-      this.sandbox_id,
-      code,
-      { language }
-    );
+    const response = await this._client.sandbox.sandboxes.runCode(this.sandbox_id, code, { language });
 
     return new Execution(response);
   }
@@ -116,15 +108,11 @@ export class Sandbox implements SandboxType {
       throw new Error('Client not initialized. Use Sandbox.create() to create a new instance.');
     }
 
-    const response = await this._client.sandbox.sandboxes.runCommand(
-      this.sandbox_id,
-      command,
-      {
-        args: args || [],
-        working_dir: options?.working_dir,
-        timeout: options?.timeout
-      }
-    );
+    const response = await this._client.sandbox.sandboxes.runCommand(this.sandbox_id, command, {
+      args: args || [],
+      working_dir: options?.working_dir,
+      timeout: options?.timeout,
+    });
 
     return new Execution(response);
   }
@@ -141,11 +129,7 @@ export class Sandbox implements SandboxType {
       throw new Error('Client not initialized. Use Sandbox.create() to create a new instance.');
     }
 
-    await this._client.sandbox.sandboxes.writeFile(
-      this.sandbox_id,
-      path,
-      content
-    );
+    await this._client.sandbox.sandboxes.writeFile(this.sandbox_id, path, content);
   }
 
   /**
@@ -160,10 +144,7 @@ export class Sandbox implements SandboxType {
       throw new Error('Client not initialized. Use Sandbox.create() to create a new instance.');
     }
 
-    const response = await this._client.sandbox.sandboxes.readFile(
-      this.sandbox_id,
-      path
-    );
+    const response = await this._client.sandbox.sandboxes.readFile(this.sandbox_id, path);
     return response.content;
   }
 
@@ -179,11 +160,8 @@ export class Sandbox implements SandboxType {
       throw new Error('Client not initialized. Use Sandbox.create() to create a new instance.');
     }
 
-    const response = await this._client.sandbox.sandboxes.listFiles(
-      this.sandbox_id,
-      path
-    );
-    return response.files.map(f => f.name);
+    const response = await this._client.sandbox.sandboxes.listFiles(this.sandbox_id, path);
+    return response.files.map((f) => f.name);
   }
 
   /**
@@ -198,10 +176,7 @@ export class Sandbox implements SandboxType {
       throw new Error('Client not initialized. Use Sandbox.create() to create a new instance.');
     }
 
-    await this._client.sandbox.sandboxes.deleteFile(
-      this.sandbox_id,
-      path
-    );
+    await this._client.sandbox.sandboxes.deleteFile(this.sandbox_id, path);
   }
 
   /**
@@ -216,11 +191,7 @@ export class Sandbox implements SandboxType {
       throw new Error('Client not initialized. Use Sandbox.create() to create a new instance.');
     }
 
-    await this._client.sandbox.sandboxes.uploadFile(
-      this.sandbox_id,
-      file,
-      remotePath
-    );
+    await this._client.sandbox.sandboxes.uploadFile(this.sandbox_id, file, remotePath);
   }
 
   /**

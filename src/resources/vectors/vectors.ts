@@ -15,14 +15,17 @@ import {
   BatchUpsertTextRequest,
   VectorSearchRequest,
   TextSearchRequest,
-  UpdateVectorRequest
+  UpdateVectorRequest,
 } from '../../types/vectors';
 import { GravixLayerBadRequestError } from '../../types/exceptions';
 
 export class Vectors {
   private baseUrl: string;
 
-  constructor(private client: any, private indexId: string) {
+  constructor(
+    private client: any,
+    private indexId: string
+  ) {
     this.baseUrl = `https://api.gravixlayer.com/v1/vectors/${indexId}`;
   }
 
@@ -38,7 +41,7 @@ export class Vectors {
     const vectorData: any = {
       embedding,
       metadata: metadata || {},
-      delete_protection
+      delete_protection,
     };
 
     if (id !== undefined) {
@@ -47,25 +50,21 @@ export class Vectors {
 
     // API expects batch format even for single operations
     const data = {
-      vectors: [vectorData]
+      vectors: [vectorData],
     };
 
-    const response = await this.client._makeRequest(
-      'POST',
-      `${this.baseUrl}/upsert`,
-      data
-    );
+    const response = await this.client._makeRequest('POST', `${this.baseUrl}/upsert`, data);
 
     const result = await response.json();
-    
+
     // Handle the actual API response format
     if (result.ids && result.ids.length > 0 && result.count > 0) {
       // The API returns ids and count, not upserted_count
       const vectorId = result.ids[0];
-      
+
       // Wait a moment for the vector to be indexed
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       try {
         return await this.get(vectorId);
       } catch (error) {
@@ -76,7 +75,7 @@ export class Vectors {
           metadata: metadata || {},
           delete_protection,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         } as Vector;
       }
     } else if (result.error) {
@@ -100,7 +99,7 @@ export class Vectors {
       text,
       model,
       metadata: metadata || {},
-      delete_protection
+      delete_protection,
     };
 
     if (id !== undefined) {
@@ -109,25 +108,21 @@ export class Vectors {
 
     // API expects batch format even for single operations
     const data = {
-      vectors: [vectorData]
+      vectors: [vectorData],
     };
 
-    const response = await this.client._makeRequest(
-      'POST',
-      `${this.baseUrl}/text/upsert`,
-      data
-    );
+    const response = await this.client._makeRequest('POST', `${this.baseUrl}/text/upsert`, data);
 
     const result = await response.json();
-    
+
     // Handle the actual API response format
     if (result.ids && result.ids.length > 0 && result.count > 0) {
       // The API returns ids and count, not upserted_count
       const vectorId = result.ids[0];
-      
+
       // Wait a moment for the vector to be indexed
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       try {
         const vector = await this.get(vectorId);
         return {
@@ -139,7 +134,7 @@ export class Vectors {
           delete_protection: vector.delete_protection,
           created_at: vector.created_at,
           updated_at: vector.updated_at,
-          usage: result.usage || { prompt_tokens: 0, total_tokens: 0 }
+          usage: result.usage || { prompt_tokens: 0, total_tokens: 0 },
         } as TextVector;
       } catch (error) {
         // If we can't retrieve the vector immediately, return a minimal TextVector
@@ -152,7 +147,7 @@ export class Vectors {
           delete_protection,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          usage: result.usage || { prompt_tokens: 0, total_tokens: 0 }
+          usage: result.usage || { prompt_tokens: 0, total_tokens: 0 },
         } as TextVector;
       }
     } else if (result.error) {
@@ -168,11 +163,7 @@ export class Vectors {
   async batchUpsert(vectors: Record<string, any>[]): Promise<BatchUpsertResponse> {
     const data = { vectors };
 
-    const response = await this.client._makeRequest(
-      'POST',
-      `${this.baseUrl}/batch`,
-      data
-    );
+    const response = await this.client._makeRequest('POST', `${this.baseUrl}/batch`, data);
 
     const result = await response.json();
     return result as BatchUpsertResponse;
@@ -184,11 +175,7 @@ export class Vectors {
   async batchUpsertText(vectors: Record<string, any>[]): Promise<BatchUpsertResponse> {
     const data = { vectors };
 
-    const response = await this.client._makeRequest(
-      'POST',
-      `${this.baseUrl}/text/batch`,
-      data
-    );
+    const response = await this.client._makeRequest('POST', `${this.baseUrl}/text/batch`, data);
 
     const result = await response.json();
     return result as BatchUpsertResponse;
@@ -198,10 +185,7 @@ export class Vectors {
    * Retrieve a specific vector by ID
    */
   async get(vectorId: string): Promise<Vector> {
-    const response = await this.client._makeRequest(
-      'GET',
-      `${this.baseUrl}/${vectorId}`
-    );
+    const response = await this.client._makeRequest('GET', `${this.baseUrl}/${vectorId}`);
 
     const result = await response.json();
     return result as Vector;
@@ -210,11 +194,7 @@ export class Vectors {
   /**
    * Update vector metadata and delete protection settings
    */
-  async update(
-    vectorId: string,
-    metadata?: Record<string, any>,
-    delete_protection?: boolean
-  ): Promise<Vector> {
+  async update(vectorId: string, metadata?: Record<string, any>, delete_protection?: boolean): Promise<Vector> {
     const data: any = {};
     if (metadata !== undefined) {
       data.metadata = metadata;
@@ -227,11 +207,7 @@ export class Vectors {
       throw new Error('At least one field must be provided for update');
     }
 
-    const response = await this.client._makeRequest(
-      'PUT',
-      `${this.baseUrl}/${vectorId}`,
-      data
-    );
+    const response = await this.client._makeRequest('PUT', `${this.baseUrl}/${vectorId}`, data);
 
     const result = await response.json();
 
@@ -247,11 +223,7 @@ export class Vectors {
    * Delete a specific vector using batch delete endpoint
    */
   async delete(vectorId: string): Promise<void> {
-    await this.client._makeRequest(
-      'POST',
-      `${this.baseUrl}/delete`,
-      { vector_ids: [vectorId] }
-    );
+    await this.client._makeRequest('POST', `${this.baseUrl}/delete`, { vector_ids: [vectorId] });
   }
 
   /**
@@ -264,11 +236,7 @@ export class Vectors {
 
     const data = { vector_ids: vectorIds };
 
-    const response = await this.client._makeRequest(
-      'POST',
-      `${this.baseUrl}/delete`,
-      data
-    );
+    const response = await this.client._makeRequest('POST', `${this.baseUrl}/delete`, data);
 
     return response.json();
   }
@@ -277,10 +245,7 @@ export class Vectors {
    * Retrieve a list of vector IDs in the index
    */
   async listIds(): Promise<VectorListResponse> {
-    const response = await this.client._makeRequest(
-      'GET',
-      `${this.baseUrl}/list`
-    );
+    const response = await this.client._makeRequest('GET', `${this.baseUrl}/list`);
 
     const result = await response.json();
     return result as VectorListResponse;
@@ -347,23 +312,19 @@ export class Vectors {
       vector,
       top_k,
       include_metadata,
-      include_values
+      include_values,
     };
 
     if (filter !== undefined) {
       data.filter = filter;
     }
 
-    const response = await this.client._makeRequest(
-      'POST',
-      `${this.baseUrl}/search`,
-      data
-    );
+    const response = await this.client._makeRequest('POST', `${this.baseUrl}/search`, data);
 
     const result = await response.json();
     return {
       hits: result.hits,
-      query_time_ms: result.query_time_ms
+      query_time_ms: result.query_time_ms,
     } as VectorSearchResponse;
   }
 
@@ -387,24 +348,20 @@ export class Vectors {
       model,
       top_k,
       include_metadata,
-      include_values
+      include_values,
     };
 
     if (filter !== undefined) {
       data.filter = filter;
     }
 
-    const response = await this.client._makeRequest(
-      'POST',
-      `${this.baseUrl}/search/text`,
-      data
-    );
+    const response = await this.client._makeRequest('POST', `${this.baseUrl}/search/text`, data);
 
     const result = await response.json();
     return {
       hits: result.hits,
       query_time_ms: result.query_time_ms,
-      usage: result.usage
+      usage: result.usage,
     } as TextSearchResponse;
   }
 }

@@ -82,7 +82,7 @@ console.log('='.repeat(50));
 console.log();
 console.log('🚀 The SDK is ready for production use!');
 console.log('📦 All features implemented and working');
-console.log('🔧 Full compatibility with OpenAI SDK patterns');
+console.log('🔧 Works with OpenAI SDK patterns');
 console.log('💻 Works with both ES modules and CommonJS');
 console.log('📚 Complete TypeScript support');
 console.log('🛠️  Comprehensive CLI tool included');

@@ -19,7 +19,7 @@ describe('GravixLayer Client', () => {
 
   it('should create client with API key', () => {
     const client = new GravixLayer({
-      apiKey: 'test-key'
+      apiKey: 'test-key',
     });
 
     expect(client).toBeInstanceOf(GravixLayer);
@@ -29,10 +29,10 @@ describe('GravixLayer Client', () => {
 
   it('should use environment variable for API key', () => {
     process.env.GRAVIXLAYER_API_KEY = 'env-test-key';
-    
+
     const client = new GravixLayer();
     expect(client).toBeInstanceOf(GravixLayer);
-    
+
     delete process.env.GRAVIXLAYER_API_KEY;
   });
 
@@ -40,7 +40,7 @@ describe('GravixLayer Client', () => {
     expect(() => {
       new GravixLayer({
         apiKey: 'test-key',
-        baseURL: 'invalid-url'
+        baseURL: 'invalid-url',
       });
     }).toThrow('Base URL must use HTTP or HTTPS protocol');
   });
@@ -48,13 +48,13 @@ describe('GravixLayer Client', () => {
   it('should accept valid HTTP and HTTPS URLs', () => {
     const httpClient = new GravixLayer({
       apiKey: 'test-key',
-      baseURL: 'http://localhost:8000'
+      baseURL: 'http://localhost:8000',
     });
     expect(httpClient).toBeInstanceOf(GravixLayer);
 
     const httpsClient = new GravixLayer({
       apiKey: 'test-key',
-      baseURL: 'https://api.example.com'
+      baseURL: 'https://api.example.com',
     });
     expect(httpsClient).toBeInstanceOf(GravixLayer);
   });

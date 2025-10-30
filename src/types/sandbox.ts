@@ -159,7 +159,7 @@ export class Execution {
     if ('logs' in this._response && this._response.logs) {
       return this._response.logs;
     }
-    
+
     // Fallback for command responses
     const logs: Record<string, string[]> = { stdout: [], stderr: [] };
     if ('stdout' in this._response && this._response.stdout) {

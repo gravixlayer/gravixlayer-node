@@ -4,10 +4,10 @@
  */
 
 export enum MemoryType {
-  FACTUAL = 'factual',      // Long-term structured knowledge (preferences, attributes)
-  EPISODIC = 'episodic',    // Specific past conversations or events
-  WORKING = 'working',      // Short-term context for current session
-  SEMANTIC = 'semantic'     // Generalized knowledge from patterns
+  FACTUAL = 'factual', // Long-term structured knowledge (preferences, attributes)
+  EPISODIC = 'episodic', // Specific past conversations or events
+  WORKING = 'working', // Short-term context for current session
+  SEMANTIC = 'semantic', // Generalized knowledge from patterns
 }
 
 export interface MemoryEntry {

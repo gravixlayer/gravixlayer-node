@@ -108,7 +108,7 @@ async function handleChatCommands(options: ChatOptions) {
   }
 
   const client = new GravixLayer({
-    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
   });
 
   try {
@@ -120,13 +120,13 @@ async function handleChatCommands(options: ChatOptions) {
       messages.push({ role: 'user', content: options.user });
 
       if (options.stream) {
-        const stream = await client.chat.completions.create({
+        const stream = (await client.chat.completions.create({
           model: options.model,
           messages,
           temperature: options.temperature,
           max_tokens: options.maxTokens,
-          stream: true
-        }) as unknown as AsyncIterable<any>;
+          stream: true,
+        })) as unknown as AsyncIterable<any>;
 
         for await (const chunk of stream) {
           if (chunk.choices[0]?.delta?.content) {
@@ -139,20 +139,20 @@ async function handleChatCommands(options: ChatOptions) {
           model: options.model,
           messages,
           temperature: options.temperature,
-          max_tokens: options.maxTokens
+          max_tokens: options.maxTokens,
         });
         console.log(completion.choices[0]?.message?.content);
       }
     } else {
       // Text completions mode
       if (options.stream) {
-        const stream = await client.completions.create({
+        const stream = (await client.completions.create({
           model: options.model,
           prompt: options.prompt!,
           temperature: options.temperature,
           max_tokens: options.maxTokens,
-          stream: true
-        }) as unknown as AsyncIterable<any>;
+          stream: true,
+        })) as unknown as AsyncIterable<any>;
 
         for await (const chunk of stream) {
           if (chunk.choices[0]?.text) {
@@ -165,7 +165,7 @@ async function handleChatCommands(options: ChatOptions) {
           model: options.model,
           prompt: options.prompt!,
           temperature: options.temperature,
-          max_tokens: options.maxTokens
+          max_tokens: options.maxTokens,
         });
         console.log(completion.choices[0]?.text);
       }
@@ -184,7 +184,7 @@ async function waitForDeploymentReady(client: GravixLayer, deploymentId: string,
   const checkStatus = async () => {
     try {
       const deployments = await client.deployments.list();
-      const currentDeployment = deployments.find(dep => dep.deployment_id === deploymentId);
+      const currentDeployment = deployments.find((dep) => dep.deployment_id === deploymentId);
 
       if (currentDeployment) {
         const status = currentDeployment.status.toLowerCase();
@@ -236,7 +236,7 @@ async function waitForDeploymentReady(client: GravixLayer, deploymentId: string,
 
 async function handleDeploymentCreate(deploymentName: string, options: DeploymentCreateOptions) {
   const client = new GravixLayer({
-    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
   });
 
   console.log(`Creating deployment '${deploymentName}' with model '${options.modelName}'...`);
@@ -257,7 +257,7 @@ async function handleDeploymentCreate(deploymentName: string, options: Deploymen
       gpu_count: options.gpuCount,
       min_replicas: options.minReplicas,
       max_replicas: options.maxReplicas,
-      hw_type: options.hwType
+      hw_type: options.hwType,
     });
 
     console.log('✅ Deployment created successfully!');
@@ -280,19 +280,19 @@ async function handleDeploymentCreate(deploymentName: string, options: Deploymen
     }
   } catch (error: any) {
     const errorStr = error.message || String(error);
-    
+
     try {
       if (errorStr.startsWith('{') && errorStr.endsWith('}')) {
         const errorData = JSON.parse(errorStr);
         const errorMessage = errorData.error || errorStr;
-        
+
         if (errorMessage.toLowerCase().includes('already exists')) {
           // Wait a moment and check if deployment was created
           setTimeout(async () => {
             try {
               const deployments = await client.deployments.list();
-              const deploymentFound = deployments.find(dep => dep.deployment_name === finalDeploymentName);
-              
+              const deploymentFound = deployments.find((dep) => dep.deployment_name === finalDeploymentName);
+
               if (deploymentFound) {
                 console.log('✅ Deployment created successfully!');
                 console.log(`Deployment ID: ${deploymentFound.deployment_id}`);
@@ -300,14 +300,16 @@ async function handleDeploymentCreate(deploymentName: string, options: Deploymen
                 console.log(`Status: ${deploymentFound.status}`);
                 console.log(`Model: ${deploymentFound.model_name}`);
                 console.log(`Hardware: ${deploymentFound.hardware}`);
-                
+
                 if (options.wait) {
                   await waitForDeploymentReady(client, deploymentFound.deployment_id, deploymentFound.deployment_name);
                 }
               } else {
                 console.log(`❌ Deployment creation failed: ${errorMessage}`);
                 if (!options.autoRetry) {
-                  console.log(`Try with --auto-retry flag: gravixlayer deployments create --deployment-name "${deploymentName}" --gpu-model "${options.gpuModel}" --model-name "${options.modelName}" --auto-retry`);
+                  console.log(
+                    `Try with --auto-retry flag: gravixlayer deployments create --deployment-name "${deploymentName}" --gpu-model "${options.gpuModel}" --model-name "${options.modelName}" --auto-retry`
+                  );
                 }
               }
             } catch {
@@ -328,7 +330,7 @@ async function handleDeploymentCreate(deploymentName: string, options: Deploymen
 
 async function handleDeploymentList(options: DeploymentListOptions) {
   const client = new GravixLayer({
-    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
   });
 
   try {
@@ -362,7 +364,7 @@ async function handleDeploymentList(options: DeploymentListOptions) {
 
 async function handleDeploymentDelete(deploymentId: string, options: DeploymentDeleteOptions) {
   const client = new GravixLayer({
-    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
   });
 
   try {
@@ -378,17 +380,17 @@ async function handleDeploymentDelete(deploymentId: string, options: DeploymentD
 
 async function handleFileUpload(filePath: string, options: FileUploadOptions) {
   const client = new GravixLayer({
-    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
   });
 
   try {
     console.log(`Uploading file '${filePath}' with purpose '${options.purpose}'...`);
-    
+
     const response = await client.files.create({
       file: filePath,
       purpose: options.purpose,
       filename: options.fileName,
-      expires_after: options.expiresAfter
+      expires_after: options.expiresAfter,
     });
 
     console.log('✅ File uploaded successfully!');
@@ -403,7 +405,7 @@ async function handleFileUpload(filePath: string, options: FileUploadOptions) {
 
 async function handleFileList(options: FileListOptions) {
   const client = new GravixLayer({
-    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
   });
 
   try {
@@ -438,16 +440,16 @@ async function handleFileList(options: FileListOptions) {
 
 async function handleFileInfo(fileIdOrName: string, options: FileInfoOptions) {
   const client = new GravixLayer({
-    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
   });
 
   try {
     let fileId = fileIdOrName;
-    
+
     // If it doesn't look like a file ID, try to find by filename
     if (!fileIdOrName.startsWith('file-')) {
       const files = await client.files.list();
-      const file = files.data.find(f => f.filename === fileIdOrName);
+      const file = files.data.find((f) => f.filename === fileIdOrName);
       if (!file) {
         console.error(`❌ File not found: ${fileIdOrName}`);
         process.exit(1);
@@ -456,7 +458,7 @@ async function handleFileInfo(fileIdOrName: string, options: FileInfoOptions) {
     }
 
     const file = await client.files.retrieve(fileId);
-    
+
     console.log(`File Information:`);
     console.log(`ID: ${file.id}`);
     console.log(`Filename: ${file.filename}`);
@@ -474,17 +476,17 @@ async function handleFileInfo(fileIdOrName: string, options: FileInfoOptions) {
 
 async function handleFileDownload(fileIdOrName: string, options: FileDownloadOptions) {
   const client = new GravixLayer({
-    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
   });
 
   try {
     let fileId = fileIdOrName;
     let filename = options.output;
-    
+
     // If it doesn't look like a file ID, try to find by filename
     if (!fileIdOrName.startsWith('file-')) {
       const files = await client.files.list();
-      const file = files.data.find(f => f.filename === fileIdOrName);
+      const file = files.data.find((f) => f.filename === fileIdOrName);
       if (!file) {
         console.error(`❌ File not found: ${fileIdOrName}`);
         process.exit(1);
@@ -504,7 +506,7 @@ async function handleFileDownload(fileIdOrName: string, options: FileDownloadOpt
     console.log(`Downloading file to '${filename}'...`);
     const content = await client.files.content(fileId);
     writeFileSync(filename, content);
-    
+
     console.log(`✅ File downloaded successfully to '${filename}'`);
   } catch (error) {
     console.error(`❌ Error downloading file: ${error}`);
@@ -514,16 +516,16 @@ async function handleFileDownload(fileIdOrName: string, options: FileDownloadOpt
 
 async function handleFileDelete(fileIdOrName: string, options: FileDeleteOptions) {
   const client = new GravixLayer({
-    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
   });
 
   try {
     let fileId = fileIdOrName;
-    
+
     // If it doesn't look like a file ID, try to find by filename
     if (!fileIdOrName.startsWith('file-')) {
       const files = await client.files.list();
-      const file = files.data.find(f => f.filename === fileIdOrName);
+      const file = files.data.find((f) => f.filename === fileIdOrName);
       if (!file) {
         console.error(`❌ File not found: ${fileIdOrName}`);
         process.exit(1);
@@ -533,7 +535,7 @@ async function handleFileDelete(fileIdOrName: string, options: FileDeleteOptions
 
     console.log(`Deleting file ${fileId}...`);
     const response = await client.files.delete(fileId);
-    
+
     console.log('✅ File deleted successfully!');
     console.log(`File Name: ${response.file_name}`);
     console.log(`Message: ${response.message}`);
@@ -545,19 +547,19 @@ async function handleFileDelete(fileIdOrName: string, options: FileDeleteOptions
 
 async function handleVectorIndexCreate(options: VectorIndexCreateOptions) {
   const client = new GravixLayer({
-    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
   });
 
   try {
     console.log(`Creating vector index '${options.name}'...`);
-    
+
     const metadata = options.metadata ? JSON.parse(options.metadata) : undefined;
-    
+
     const index = await client.vectors.indexes.create({
       name: options.name,
       dimension: options.dimension,
       metric: options.metric,
-      metadata
+      metadata,
     });
 
     console.log('✅ Vector index created successfully!');
@@ -574,7 +576,7 @@ async function handleVectorIndexCreate(options: VectorIndexCreateOptions) {
 
 async function handleVectorIndexList(options: VectorIndexListOptions) {
   const client = new GravixLayer({
-    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
   });
 
   try {
@@ -610,19 +612,19 @@ async function handleVectorIndexList(options: VectorIndexListOptions) {
 
 async function handleVectorUpsertText(indexId: string, options: VectorUpsertTextOptions) {
   const client = new GravixLayer({
-    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
   });
 
   try {
     console.log(`Upserting text vector to index '${indexId}'...`);
-    
+
     const metadata = options.metadata ? JSON.parse(options.metadata) : undefined;
-    
+
     const vector = await client.vectors.index(indexId).upsertText({
       text: options.text,
       model: options.model,
       id: options.id,
-      metadata
+      metadata,
     });
 
     console.log('✅ Text vector upserted successfully!');
@@ -638,25 +640,25 @@ async function handleVectorUpsertText(indexId: string, options: VectorUpsertText
 
 async function handleVectorSearchText(indexId: string, options: VectorSearchTextOptions) {
   const client = new GravixLayer({
-    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
   });
 
   try {
     console.log(`Searching vectors in index '${indexId}'...`);
-    
+
     const filter = options.filter ? JSON.parse(options.filter) : undefined;
-    
+
     const results = await client.vectors.index(indexId).searchText({
       query: options.query,
       model: options.model,
       top_k: options.topK,
-      filter
+      filter,
     });
 
     console.log(`✅ Search completed in ${results.query_time_ms}ms`);
     console.log(`Found ${results.hits.length} result(s):`);
     console.log();
-    
+
     for (const hit of results.hits) {
       console.log(`ID: ${hit.id}`);
       console.log(`Score: ${hit.score.toFixed(4)}`);
@@ -673,7 +675,7 @@ async function handleVectorSearchText(indexId: string, options: VectorSearchText
 
 async function handleHardwareList(type: 'hardware' | 'gpu', options: HardwareOptions) {
   const client = new GravixLayer({
-    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+    apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
   });
 
   try {
@@ -681,7 +683,7 @@ async function handleHardwareList(type: 'hardware' | 'gpu', options: HardwareOpt
 
     if (options.json) {
       // Filter out unwanted fields from JSON output
-      const filteredAccelerators = accelerators.map(a => {
+      const filteredAccelerators = accelerators.map((a) => {
         const { name, memory, gpu_type, use_case, ...filtered } = a;
         return filtered;
       });
@@ -732,9 +734,7 @@ const chatCmd = program
   .action((options) => handleChatCommands(options));
 
 // Deployments command
-const deploymentsCmd = program
-  .command('deployments')
-  .description('Deployment management');
+const deploymentsCmd = program.command('deployments').description('Deployment management');
 
 // Create deployment
 deploymentsCmd
@@ -800,16 +800,17 @@ deploymentsCmd
   });
 
 // Files command
-const filesCmd = program
-  .command('files')
-  .description('File management');
+const filesCmd = program.command('files').description('File management');
 
 // Upload file
 filesCmd
   .command('upload <file>')
   .description('Upload a file')
   .option('--api-key <key>', 'API key')
-  .requiredOption('--purpose <purpose>', 'File purpose (assistants, batch, batch_output, fine-tune, vision, user_data, evals)')
+  .requiredOption(
+    '--purpose <purpose>',
+    'File purpose (assistants, batch, batch_output, fine-tune, vision, user_data, evals)'
+  )
   .option('--file-name <name>', 'Custom filename for the uploaded file')
   .option('--expires-after <seconds>', 'File expiration time in seconds', parseInt)
   .action((file, options) => handleFileUpload(file, options));
@@ -845,14 +846,10 @@ filesCmd
   .action((fileIdOrName, options) => handleFileDelete(fileIdOrName, options));
 
 // Vectors command
-const vectorsCmd = program
-  .command('vectors')
-  .description('Vector database management');
+const vectorsCmd = program.command('vectors').description('Vector database management');
 
 // Vector index commands
-const vectorIndexCmd = vectorsCmd
-  .command('index')
-  .description('Vector index management');
+const vectorIndexCmd = vectorsCmd.command('index').description('Vector index management');
 
 // Create vector index
 vectorIndexCmd
@@ -880,7 +877,7 @@ vectorIndexCmd
   .option('--api-key <key>', 'API key')
   .action(async (indexId, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
@@ -895,9 +892,7 @@ vectorIndexCmd
   });
 
 // Vector operations commands
-const vectorCmd = vectorsCmd
-  .command('vector')
-  .description('Vector operations');
+const vectorCmd = vectorsCmd.command('vector').description('Vector operations');
 
 // Upsert text vector
 vectorCmd
@@ -928,7 +923,7 @@ vectorCmd
   .option('--api-key <key>', 'API key')
   .action(async (indexId, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
@@ -952,7 +947,7 @@ vectorCmd
   .option('--api-key <key>', 'API key')
   .action(async (indexId, vectorId, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
@@ -967,9 +962,7 @@ vectorCmd
   });
 
 // Memory command
-const memoryCmd = program
-  .command('memory')
-  .description('Intelligent memory management');
+const memoryCmd = program.command('memory').description('Intelligent memory management');
 
 // Add memory
 memoryCmd
@@ -981,19 +974,19 @@ memoryCmd
   .option('--no-infer', 'Disable AI inference for memory processing')
   .action(async (userId, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
       console.log(`Adding memory for user '${userId}'...`);
-      
+
       const metadata = options.metadata ? JSON.parse(options.metadata) : undefined;
-      
+
       const result = await client.memory.add({
         messages: options.message,
         user_id: userId,
         metadata,
-        infer: options.infer !== false
+        infer: options.infer !== false,
       });
 
       console.log('✅ Memory added successfully!');
@@ -1019,17 +1012,17 @@ memoryCmd
   .option('--threshold <threshold>', 'Minimum similarity threshold', parseFloat)
   .action(async (userId, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
       console.log(`Searching memories for user '${userId}' with query: "${options.query}"`);
-      
+
       const result = await client.memory.search({
         query: options.query,
         user_id: userId,
         limit: options.limit,
-        threshold: options.threshold
+        threshold: options.threshold,
       });
 
       console.log(`✅ Found ${result.results.length} memory(ies):`);
@@ -1056,15 +1049,15 @@ memoryCmd
   .option('--json', 'Output as JSON')
   .action(async (userId, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
       console.log(`Listing memories for user '${userId}'...`);
-      
+
       const result = await client.memory.getAll({
         user_id: userId,
-        limit: options.limit
+        limit: options.limit,
       });
 
       if (options.json) {
@@ -1093,15 +1086,15 @@ memoryCmd
   .option('--api-key <key>', 'API key')
   .action(async (userId, memoryId, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
       console.log(`Getting memory '${memoryId}' for user '${userId}'...`);
-      
+
       const memory = await client.memory.get({
         memory_id: memoryId,
-        user_id: userId
+        user_id: userId,
       });
 
       if (memory) {
@@ -1130,16 +1123,16 @@ memoryCmd
   .requiredOption('--data <data>', 'New memory content')
   .action(async (userId, memoryId, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
       console.log(`Updating memory '${memoryId}' for user '${userId}'...`);
-      
+
       const result = await client.memory.update({
         memory_id: memoryId,
         user_id: userId,
-        data: options.data
+        data: options.data,
       });
 
       console.log('✅ Memory updated successfully!');
@@ -1157,15 +1150,15 @@ memoryCmd
   .option('--api-key <key>', 'API key')
   .action(async (userId, memoryId, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
       console.log(`Deleting memory '${memoryId}' for user '${userId}'...`);
-      
+
       const result = await client.memory.delete({
         memory_id: memoryId,
-        user_id: userId
+        user_id: userId,
       });
 
       console.log('✅ Memory deleted successfully!');
@@ -1184,7 +1177,7 @@ memoryCmd
   .option('--confirm', 'Skip confirmation prompt')
   .action(async (userId, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
@@ -1195,9 +1188,9 @@ memoryCmd
       }
 
       console.log(`Deleting all memories for user '${userId}'...`);
-      
+
       const result = await client.memory.deleteAll({
-        user_id: userId
+        user_id: userId,
       });
 
       console.log('✅ All memories deleted successfully!');
@@ -1209,9 +1202,7 @@ memoryCmd
   });
 
 // Sandbox command
-const sandboxCmd = program
-  .command('sandbox')
-  .description('Sandbox management');
+const sandboxCmd = program.command('sandbox').description('Sandbox management');
 
 // Create sandbox
 sandboxCmd
@@ -1226,7 +1217,7 @@ sandboxCmd
   .option('--metadata <metadata>', 'Metadata as JSON')
   .action(async (options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
@@ -1234,7 +1225,7 @@ sandboxCmd
         provider: options.provider,
         region: options.region,
         template: options.template,
-        timeout: options.timeout
+        timeout: options.timeout,
       };
 
       if (options.envVars) {
@@ -1246,7 +1237,7 @@ sandboxCmd
       }
 
       const sandbox = await client.sandbox.sandboxes.create(createOptions);
-      
+
       console.log(`Created sandbox: ${sandbox.sandbox_id}`);
       console.log(`Status: ${sandbox.status}`);
       console.log(`Template: ${sandbox.template}`);
@@ -1268,13 +1259,13 @@ sandboxCmd
   .option('--json', 'Output as JSON')
   .action(async (options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
       const sandboxes = await client.sandbox.sandboxes.list({
         limit: options.limit,
-        offset: options.offset
+        offset: options.offset,
       });
 
       if (options.json) {
@@ -1282,7 +1273,7 @@ sandboxCmd
       } else {
         console.log(`Found ${sandboxes.total} sandbox(es):`);
         console.log();
-        
+
         for (const sandbox of sandboxes.sandboxes) {
           console.log(`ID: ${sandbox.sandbox_id}`);
           console.log(`Status: ${sandbox.status}`);
@@ -1309,12 +1300,12 @@ sandboxCmd
   .option('--json', 'Output as JSON')
   .action(async (sandboxId, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
       const sandbox = await client.sandbox.sandboxes.get(sandboxId);
-      
+
       if (options.json) {
         console.log(JSON.stringify(sandbox, null, 2));
       } else {
@@ -1342,7 +1333,7 @@ sandboxCmd
   .option('--api-key <key>', 'API key')
   .action(async (sandboxId, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
@@ -1364,34 +1355,30 @@ sandboxCmd
   .option('--timeout <timeout>', 'Timeout in milliseconds', parseInt)
   .action(async (sandboxId, command, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
-      const result = await client.sandbox.sandboxes.runCommand(
-        sandboxId,
-        command,
-        {
-          args: options.args || [],
-          working_dir: options.workingDir,
-          timeout: options.timeout
-        }
-      );
-      
+      const result = await client.sandbox.sandboxes.runCommand(sandboxId, command, {
+        args: options.args || [],
+        working_dir: options.workingDir,
+        timeout: options.timeout,
+      });
+
       console.log(`Command executed (exit code: ${result.exit_code})`);
       console.log(`Duration: ${result.duration_ms}ms`);
       console.log(`Success: ${result.success}`);
-      
+
       if (result.stdout) {
         console.log('\nSTDOUT:');
         console.log(result.stdout);
       }
-      
+
       if (result.stderr) {
         console.log('\nSTDERR:');
         console.log(result.stderr);
       }
-      
+
       if (result.error) {
         console.log(`\nERROR: ${result.error}`);
       }
@@ -1410,33 +1397,29 @@ sandboxCmd
   .option('--context-id <contextId>', 'Code execution context ID')
   .action(async (sandboxId, code, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
-      const result = await client.sandbox.sandboxes.runCode(
-        sandboxId,
-        code,
-        {
-          language: options.language,
-          context_id: options.contextId
-        }
-      );
-      
+      const result = await client.sandbox.sandboxes.runCode(sandboxId, code, {
+        language: options.language,
+        context_id: options.contextId,
+      });
+
       if (result.logs?.stdout && result.logs.stdout.length > 0) {
         console.log('\nOUTPUT:');
         for (const line of result.logs.stdout) {
           console.log(line);
         }
       }
-      
+
       if (result.logs?.stderr && result.logs.stderr.length > 0) {
         console.log('\nSTDERR:');
         for (const line of result.logs.stderr) {
           console.log(line);
         }
       }
-      
+
       if (result.error) {
         console.log(`\nERROR: ${JSON.stringify(result.error)}`);
       }
@@ -1447,9 +1430,7 @@ sandboxCmd
   });
 
 // File operations
-const sandboxFileCmd = sandboxCmd
-  .command('file')
-  .description('File operations');
+const sandboxFileCmd = sandboxCmd.command('file').description('File operations');
 
 // Read file
 sandboxFileCmd
@@ -1458,7 +1439,7 @@ sandboxFileCmd
   .option('--api-key <key>', 'API key')
   .action(async (sandboxId, path, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
@@ -1481,7 +1462,7 @@ sandboxFileCmd
   .option('--api-key <key>', 'API key')
   .action(async (sandboxId, path, content, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
@@ -1504,14 +1485,14 @@ sandboxFileCmd
   .option('--api-key <key>', 'API key')
   .action(async (sandboxId, path, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
       const result = await client.sandbox.sandboxes.listFiles(sandboxId, path);
       console.log(`Files in ${path}:`);
       console.log();
-      
+
       for (const fileInfo of result.files) {
         if (fileInfo.is_dir) {
           console.log(`DIR  ${fileInfo.name}/`);
@@ -1534,7 +1515,7 @@ sandboxFileCmd
   .option('--api-key <key>', 'API key')
   .action(async (sandboxId, path, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
@@ -1555,7 +1536,7 @@ sandboxFileCmd
   .option('--api-key <key>', 'API key')
   .action(async (sandboxId, path, options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
@@ -1570,9 +1551,7 @@ sandboxFileCmd
   });
 
 // Template commands
-const sandboxTemplateCmd = sandboxCmd
-  .command('template')
-  .description('Template management');
+const sandboxTemplateCmd = sandboxCmd.command('template').description('Template management');
 
 // List templates
 sandboxTemplateCmd
@@ -1584,13 +1563,13 @@ sandboxTemplateCmd
   .option('--json', 'Output as JSON')
   .action(async (options) => {
     const client = new GravixLayer({
-      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY
+      apiKey: options.apiKey || process.env.GRAVIXLAYER_API_KEY,
     });
 
     try {
       const templates = await client.sandbox.templates.list({
         limit: options.limit,
-        offset: options.offset
+        offset: options.offset,
       });
 
       if (options.json) {
@@ -1598,11 +1577,13 @@ sandboxTemplateCmd
       } else {
         console.log(`Available templates:`);
         console.log();
-        
+
         for (const template of templates.templates) {
           console.log(`Name: ${template.name}`);
           console.log(`Description: ${template.description}`);
-          console.log(`Resources: ${template.vcpu_count} vCPU, ${template.memory_mb}MB RAM, ${template.disk_size_mb}MB disk`);
+          console.log(
+            `Resources: ${template.vcpu_count} vCPU, ${template.memory_mb}MB RAM, ${template.disk_size_mb}MB disk`
+          );
           console.log(`Created: ${template.created_at}`);
           console.log();
         }

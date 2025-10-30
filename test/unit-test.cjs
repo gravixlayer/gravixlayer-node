@@ -242,7 +242,7 @@ class UnitTester {
   }
 
   async testCompatibilityParameters() {
-    // Test that compatibility parameters are accepted without errors
+  
     const client = new GravixLayer({
       apiKey: 'test-key',
       organization: 'test-org',
