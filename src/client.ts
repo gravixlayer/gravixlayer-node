@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import fetch from "node-fetch";
 import {
   GravixLayerError,
   GravixLayerAuthenticationError,
@@ -6,17 +6,17 @@ import {
   GravixLayerServerError,
   GravixLayerBadRequestError,
   GravixLayerConnectionError,
-} from './types/exceptions';
-import { ChatResource } from './resources/chat/completions';
-import { Embeddings } from './resources/embeddings';
-import { Completions } from './resources/completions';
-import { Deployments } from './resources/deployments';
-import { Accelerators } from './resources/accelerators';
-import { Files } from './resources/files';
-import { VectorDatabase } from './resources/vectors/main';
-import { Memory } from './resources/memory/memory';
-import { SyncMemory } from './resources/memory/sync-memory';
-import { SandboxResource } from './resources/sandbox';
+} from "./types/exceptions";
+import { ChatResource } from "./resources/chat/completions";
+import { Embeddings } from "./resources/embeddings";
+import { Completions } from "./resources/completions";
+import { Deployments } from "./resources/deployments";
+import { Accelerators } from "./resources/accelerators";
+import { Files } from "./resources/files";
+import { VectorDatabase } from "./resources/vectors/main";
+import { Memory } from "./resources/memory/memory";
+import { SyncMemory } from "./resources/memory/sync-memory";
+import { SandboxResource } from "./resources/sandbox";
 
 export interface GravixLayerOptions {
   apiKey?: string;
@@ -69,24 +69,33 @@ export class GravixLayer {
   public sandbox: SandboxResource;
 
   constructor(options: GravixLayerOptions = {}) {
-    this.apiKey = options.apiKey || process.env.GRAVIXLAYER_API_KEY || '';
-    this.baseURL = options.baseURL || process.env.GRAVIXLAYER_BASE_URL || 'https://api.gravixlayer.com/v1/inference';
+    this.apiKey = options.apiKey || process.env.GRAVIXLAYER_API_KEY || "";
+    this.baseURL =
+      options.baseURL ||
+      process.env.GRAVIXLAYER_BASE_URL ||
+      "https://api.gravixlayer.com/v1/inference";
 
     this.organization = options.organization;
     this.project = options.project;
 
     // Validate URL scheme
-    if (!this.baseURL.startsWith('http://') && !this.baseURL.startsWith('https://')) {
-      throw new Error('Base URL must start with http:// or https://');
+    if (
+      this.baseURL &&
+      !this.baseURL.startsWith("http://") &&
+      !this.baseURL.startsWith("https://")
+    ) {
+      throw new Error("Base URL must start with http:// or https:// protocol");
     }
 
     this.timeout = options.timeout || 60000; // 60 seconds in milliseconds
     this.maxRetries = options.maxRetries || 3;
     this.customHeaders = options.headers || {};
-    this.userAgent = options.userAgent || 'gravixlayer-js/0.0.16';
+    this.userAgent = options.userAgent || "gravixlayer-js/0.0.16";
 
     if (!this.apiKey) {
-      throw new Error('API key must be provided via options or GRAVIXLAYER_API_KEY environment variable');
+      throw new Error(
+        "API key must be provided via options or GRAVIXLAYER_API_KEY environment variable",
+      );
     }
 
     // Initialize API resources
@@ -105,30 +114,37 @@ export class GravixLayer {
     endpoint: string,
     data?: any,
     stream: boolean = false,
-    options: any = {}
+    options: any = {},
   ): Promise<any> {
     // Handle full URLs (for vector database endpoints)
     let url: string;
-    if (endpoint && (endpoint.startsWith('http://') || endpoint.startsWith('https://'))) {
+    if (
+      endpoint &&
+      (endpoint.startsWith("http://") || endpoint.startsWith("https://"))
+    ) {
       url = endpoint;
     } else {
-      const baseUrl = this.baseURL.replace(/\/$/, '');
-      url = endpoint ? `${baseUrl}/${endpoint.replace(/^\//, '')}` : baseUrl;
+      const baseUrl = this.baseURL.replace(/\/$/, "");
+      url = endpoint ? `${baseUrl}/${endpoint.replace(/^\//, "")}` : baseUrl;
     }
 
     // Check if data is FormData
-    const isFormData = data && typeof data === 'object' && data.constructor && data.constructor.name === 'FormData';
+    const isFormData =
+      data &&
+      typeof data === "object" &&
+      data.constructor &&
+      data.constructor.name === "FormData";
 
     const headers = {
       Authorization: `Bearer ${this.apiKey}`,
-      'User-Agent': this.userAgent,
+      "User-Agent": this.userAgent,
       ...this.customHeaders,
       ...options.headers,
     };
 
     // Only set Content-Type for non-FormData requests
     if (!isFormData) {
-      headers['Content-Type'] = 'application/json';
+      headers["Content-Type"] = "application/json";
     }
 
     const controller = new AbortController();
@@ -161,21 +177,30 @@ export class GravixLayer {
         }
 
         if (response.status === 401) {
-          throw new GravixLayerAuthenticationError('Authentication failed.');
+          throw new GravixLayerAuthenticationError("Authentication failed.");
         }
 
         if (response.status === 429) {
-          const retryAfter = response.headers.get('Retry-After');
-          console.warn(`Rate limit exceeded. Retrying in ${retryAfter || Math.pow(2, attempt)}s...`);
+          const retryAfter = response.headers.get("Retry-After");
+          console.warn(
+            `Rate limit exceeded. Retrying in ${retryAfter || Math.pow(2, attempt)}s...`,
+          );
 
           if (attempt < this.maxRetries) {
-            await this._sleep(retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 1000);
+            await this._sleep(
+              retryAfter
+                ? parseInt(retryAfter) * 1000
+                : Math.pow(2, attempt) * 1000,
+            );
             continue;
           }
           throw new GravixLayerRateLimitError(await response.text());
         }
 
-        if ([502, 503, 504].includes(response.status) && attempt < this.maxRetries) {
+        if (
+          [502, 503, 504].includes(response.status) &&
+          attempt < this.maxRetries
+        ) {
           console.warn(`Server error: ${response.status}. Retrying...`);
           await this._sleep(Math.pow(2, attempt) * 1000);
           continue;
@@ -189,7 +214,9 @@ export class GravixLayer {
           throw new GravixLayerServerError(await response.text());
         }
 
-        throw new GravixLayerError(`HTTP ${response.status}: ${response.statusText}`);
+        throw new GravixLayerError(
+          `HTTP ${response.status}: ${response.statusText}`,
+        );
       } catch (error) {
         clearTimeout(timeoutId);
 
@@ -198,15 +225,17 @@ export class GravixLayer {
         }
 
         if (attempt === this.maxRetries) {
-          throw new GravixLayerConnectionError(error instanceof Error ? error.message : String(error));
+          throw new GravixLayerConnectionError(
+            error instanceof Error ? error.message : String(error),
+          );
         }
 
-        console.warn('Transient connection error, retrying...');
+        console.warn("Transient connection error, retrying...");
         await this._sleep(Math.pow(2, attempt) * 1000);
       }
     }
 
-    throw new GravixLayerError('Failed to complete request.');
+    throw new GravixLayerError("Failed to complete request.");
   }
 
   private _sleep(ms: number): Promise<void> {

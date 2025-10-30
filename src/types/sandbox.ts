@@ -156,50 +156,52 @@ export class Execution {
   }
 
   get logs(): Record<string, string[]> {
-    if ('logs' in this._response && this._response.logs) {
+    if ("logs" in this._response && this._response.logs) {
       return this._response.logs;
     }
 
     // Fallback for command responses
     const logs: Record<string, string[]> = { stdout: [], stderr: [] };
-    if ('stdout' in this._response && this._response.stdout) {
-      logs.stdout = this._response.stdout.split('\n');
+    if ("stdout" in this._response && this._response.stdout) {
+      logs.stdout = this._response.stdout.split("\n");
     }
-    if ('stderr' in this._response && this._response.stderr) {
-      logs.stderr = this._response.stderr.split('\n');
+    if ("stderr" in this._response && this._response.stderr) {
+      logs.stderr = this._response.stderr.split("\n");
     }
     return logs;
   }
 
   get stdout(): string {
-    if ('stdout' in this._response) {
-      return this._response.stdout || '';
+    if ("stdout" in this._response) {
+      return this._response.stdout || "";
     }
-    if ('logs' in this._response && this._response.logs) {
-      return this._response.logs.stdout?.join('\n') || '';
+    if ("logs" in this._response && this._response.logs) {
+      return this._response.logs.stdout?.join("\n") || "";
     }
-    return '';
+    return "";
   }
 
   get stderr(): string {
-    if ('stderr' in this._response) {
-      return this._response.stderr || '';
+    if ("stderr" in this._response) {
+      return this._response.stderr || "";
     }
-    if ('logs' in this._response && this._response.logs) {
-      return this._response.logs.stderr?.join('\n') || '';
+    if ("logs" in this._response && this._response.logs) {
+      return this._response.logs.stderr?.join("\n") || "";
     }
-    return '';
+    return "";
   }
 
   get exit_code(): number {
-    return 'exit_code' in this._response ? this._response.exit_code : 0;
+    return "exit_code" in this._response ? this._response.exit_code : 0;
   }
 
   get success(): boolean {
-    return 'success' in this._response ? this._response.success : this.exit_code === 0;
+    return "success" in this._response
+      ? this._response.success
+      : this.exit_code === 0;
   }
 
   get error(): any {
-    return 'error' in this._response ? this._response.error : null;
+    return "error" in this._response ? this._response.error : null;
   }
 }

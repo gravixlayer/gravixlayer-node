@@ -2,8 +2,8 @@
  * Memory resources for GravixLayer SDK - Intelligent memory management
  */
 
-export { Memory } from './memory';
-export { SyncMemory } from './sync-memory';
+export { Memory } from "./memory";
+export { SyncMemory } from "./sync-memory";
 export type {
   MemoryType,
   MemoryEntry,
@@ -20,4 +20,4 @@ export type {
   MemorySearchResponse,
   MemoryGetAllResponse,
   MemoryOperationResponse,
-} from '../../types/memory';
+} from "../../types/memory";

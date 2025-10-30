@@ -17,9 +17,9 @@ import type {
   MemoryGetAllResponse,
   MemoryOperationResponse,
   MemoryEntry,
-} from '../../types/memory';
+} from "../../types/memory";
 
-import { MemoryType } from '../../types/memory';
+import { MemoryType } from "../../types/memory";
 
 export class SyncMemory {
   private client: any;
@@ -41,7 +41,7 @@ export class SyncMemory {
     indexName: string,
     cloudProvider: string,
     region: string,
-    deleteProtection: boolean
+    deleteProtection: boolean,
   ) {
     this.client = client;
     this.currentEmbeddingModel = embeddingModel;
@@ -53,17 +53,19 @@ export class SyncMemory {
 
     // Model dimensions mapping (matching Python implementation)
     this.modelDimensions = {
-      'microsoft/multilingual-e5-large': 1024,
-      'multilingual-e5-large': 1024,
-      'baai/bge-large-en-v1.5': 1024,
-      'baai/bge-base-en-v1.5': 768,
-      'baai/bge-small-en-v1.5': 384,
-      'nomic-ai/nomic-embed-text:v1.5': 768,
-      'all-MiniLM-L6-v2': 384,
-      'all-mpnet-base-v2': 768,
+      "microsoft/multilingual-e5-large": 1024,
+      "multilingual-e5-large": 1024,
+      "baai/bge-large-en-v1.5": 1024,
+      "baai/bge-base-en-v1.5": 768,
+      "baai/bge-small-en-v1.5": 384,
+      "nomic-ai/nomic-embed-text:v1.5": 768,
+      "all-MiniLM-L6-v2": 384,
+      "all-mpnet-base-v2": 768,
     };
 
-    this.embeddingDimension = this.getEmbeddingDimension(this.currentEmbeddingModel);
+    this.embeddingDimension = this.getEmbeddingDimension(
+      this.currentEmbeddingModel,
+    );
   }
 
   private getEmbeddingDimension(model: string): number {
@@ -79,10 +81,11 @@ export class SyncMemory {
     region?: string;
   }): void {
     if (!options) {
-      console.log('⚠️  No configuration options provided');
+      console.log("⚠️  No configuration options provided");
       return;
     }
-    const { embeddingModel, inferenceModel, indexName, cloudProvider, region } = options;
+    const { embeddingModel, inferenceModel, indexName, cloudProvider, region } =
+      options;
     let configChanged = false;
 
     if (embeddingModel && embeddingModel !== this.currentEmbeddingModel) {
@@ -119,7 +122,7 @@ export class SyncMemory {
     }
 
     if (configChanged) {
-      console.log('Configuration updated successfully');
+      console.log("Configuration updated successfully");
     }
   }
 
@@ -141,11 +144,18 @@ export class SyncMemory {
     try {
       // Note: This would need to be implemented with synchronous HTTP calls
       // For now, return a basic list
-      console.log('⚠️  Warning: Synchronous index listing not fully implemented');
-      console.log('   Use the async version for full index management capabilities');
+      console.log(
+        "⚠️  Warning: Synchronous index listing not fully implemented",
+      );
+      console.log(
+        "   Use the async version for full index management capabilities",
+      );
       return [this.currentIndexName];
     } catch (error) {
-      console.error('Error listing indexes:', error instanceof Error ? error.message : String(error));
+      console.error(
+        "Error listing indexes:",
+        error instanceof Error ? error.message : String(error),
+      );
       return [];
     }
   }
@@ -170,24 +180,35 @@ export class SyncMemory {
     metadata?: Record<string, any>,
     infer?: boolean,
     embeddingModel?: string,
-    indexName?: string
+    indexName?: string,
   ): MemoryResponse {
     const shouldInfer = infer !== undefined ? infer : true;
     const memoryMetadata = metadata || {};
     // Note: Dynamic model/index switching per operation not supported in sync mode
     if (embeddingModel && embeddingModel !== this.currentEmbeddingModel) {
-      console.log('⚠️  Warning: Per-operation embedding model override not supported in sync mode');
-      console.log('   Use switchConfiguration() to change embedding model globally');
+      console.log(
+        "⚠️  Warning: Per-operation embedding model override not supported in sync mode",
+      );
+      console.log(
+        "   Use switchConfiguration() to change embedding model globally",
+      );
     }
 
     if (indexName && indexName !== this.currentIndexName) {
-      console.log('⚠️  Warning: Per-operation index override not supported in sync mode');
-      console.log('   Use switchIndex() to change index globally');
+      console.log(
+        "⚠️  Warning: Per-operation index override not supported in sync mode",
+      );
+      console.log("   Use switchIndex() to change index globally");
     }
 
     // Handle conversation messages
     if (Array.isArray(messages)) {
-      return this.addFromMessages(messages, user_id, memoryMetadata, shouldInfer);
+      return this.addFromMessages(
+        messages,
+        user_id,
+        memoryMetadata,
+        shouldInfer,
+      );
     }
 
     // Handle direct content - simplified synchronous implementation
@@ -196,7 +217,7 @@ export class SyncMemory {
     // Create memory metadata
     const finalMetadata = {
       user_id: user_id,
-      memory_type: 'factual',
+      memory_type: "factual",
       content: messages as string,
       embedding_model: this.currentEmbeddingModel,
       index_name: this.currentIndexName,
@@ -216,7 +237,7 @@ export class SyncMemory {
         {
           id: memoryId,
           memory: messages as string,
-          event: 'ADD',
+          event: "ADD",
         },
       ],
     };
@@ -226,7 +247,7 @@ export class SyncMemory {
     messages: Array<{ role: string; content: string }>,
     user_id: string,
     metadata?: Record<string, any>,
-    infer?: boolean
+    infer?: boolean,
   ): MemoryResponse {
     const shouldInfer = infer !== undefined ? infer : true;
     const memoryMetadata = metadata || {};
@@ -244,8 +265,13 @@ export class SyncMemory {
     }
 
     // AI inference from conversation (simplified)
-    const conversationText = messages.map((m) => `${m.role}: ${m.content}`).join('\n');
-    const inferredMemories = this.inferMemoriesFromConversation(conversationText, user_id);
+    const conversationText = messages
+      .map((m) => `${m.role}: ${m.content}`)
+      .join("\n");
+    const inferredMemories = this.inferMemoriesFromConversation(
+      conversationText,
+      user_id,
+    );
 
     const results = [];
     for (const memory of inferredMemories) {
@@ -256,20 +282,29 @@ export class SyncMemory {
     return { results };
   }
 
-  private inferMemoriesFromConversation(conversationText: string, user_id: string): string[] {
+  private inferMemoriesFromConversation(
+    conversationText: string,
+    user_id: string,
+  ): string[] {
     // Simplified inference - in real implementation, this would call the inference model
     const memories: string[] = [];
 
-    if (conversationText.includes('prefer') || conversationText.includes('like')) {
-      const lines = conversationText.split('\n');
+    if (
+      conversationText.includes("prefer") ||
+      conversationText.includes("like")
+    ) {
+      const lines = conversationText.split("\n");
       for (const line of lines) {
-        if (line.includes('user:') && (line.includes('prefer') || line.includes('like'))) {
-          memories.push(line.replace('user:', '').trim());
+        if (
+          line.includes("user:") &&
+          (line.includes("prefer") || line.includes("like"))
+        ) {
+          memories.push(line.replace("user:", "").trim());
         }
       }
     }
 
-    return memories.length > 0 ? memories : ['User engaged in conversation'];
+    return memories.length > 0 ? memories : ["User engaged in conversation"];
   }
 
   search(
@@ -278,15 +313,19 @@ export class SyncMemory {
     limit: number,
     threshold: number,
     embeddingModel?: string,
-    indexName?: string
+    indexName?: string,
   ): { results: any[] } {
     // Note: Dynamic model/index switching per operation not supported in sync mode
     if (embeddingModel && embeddingModel !== this.currentEmbeddingModel) {
-      console.log('⚠️  Warning: Per-operation embedding model override not supported in sync mode');
+      console.log(
+        "⚠️  Warning: Per-operation embedding model override not supported in sync mode",
+      );
     }
 
     if (indexName && indexName !== this.currentIndexName) {
-      console.log('⚠️  Warning: Per-operation index override not supported in sync mode');
+      console.log(
+        "⚠️  Warning: Per-operation index override not supported in sync mode",
+      );
     }
 
     // Note: In a real sync implementation, this would use synchronous HTTP calls
@@ -299,7 +338,9 @@ export class SyncMemory {
 
   get(memory_id: string, user_id: string, indexName?: string): any | null {
     if (indexName && indexName !== this.currentIndexName) {
-      console.log('⚠️  Warning: Per-operation index override not supported in sync mode');
+      console.log(
+        "⚠️  Warning: Per-operation index override not supported in sync mode",
+      );
     }
 
     // Note: In a real sync implementation, this would use synchronous HTTP calls
@@ -308,20 +349,35 @@ export class SyncMemory {
     return null; // Would be implemented with sync HTTP calls
   }
 
-  getAll(user_id: string, limit: number, indexName?: string): { results: any[] } {
+  getAll(
+    user_id: string,
+    limit: number,
+    indexName?: string,
+  ): { results: any[] } {
     if (indexName && indexName !== this.currentIndexName) {
-      console.log('⚠️  Warning: Per-operation index override not supported in sync mode');
+      console.log(
+        "⚠️  Warning: Per-operation index override not supported in sync mode",
+      );
     }
 
     // Note: In a real sync implementation, this would use synchronous HTTP calls
-    console.log(`📚 Getting all memories (sync) for user ${user_id}, limit: ${limit}`);
+    console.log(
+      `📚 Getting all memories (sync) for user ${user_id}, limit: ${limit}`,
+    );
 
     return { results: [] }; // Would be implemented with sync HTTP calls
   }
 
-  update(memory_id: string, user_id: string, data: string, indexName?: string): { message: string } {
+  update(
+    memory_id: string,
+    user_id: string,
+    data: string,
+    indexName?: string,
+  ): { message: string } {
     if (indexName && indexName !== this.currentIndexName) {
-      console.log('⚠️  Warning: Per-operation index override not supported in sync mode');
+      console.log(
+        "⚠️  Warning: Per-operation index override not supported in sync mode",
+      );
     }
 
     // Note: In a real sync implementation, this would use synchronous HTTP calls
@@ -331,9 +387,15 @@ export class SyncMemory {
     return { message: `Memory ${memory_id} updated successfully!` };
   }
 
-  delete(memory_id: string, user_id: string, indexName?: string): { message: string } {
+  delete(
+    memory_id: string,
+    user_id: string,
+    indexName?: string,
+  ): { message: string } {
     if (indexName && indexName !== this.currentIndexName) {
-      console.log('⚠️  Warning: Per-operation index override not supported in sync mode');
+      console.log(
+        "⚠️  Warning: Per-operation index override not supported in sync mode",
+      );
     }
 
     // Note: In a real sync implementation, this would use synchronous HTTP calls
@@ -356,7 +418,7 @@ export class SyncMemory {
     memory_type?: MemoryType,
     metadata: Record<string, any> = {},
     memory_id?: string,
-    infer: boolean = true
+    infer: boolean = true,
   ): MemoryEntry | MemoryEntry[] {
     const id = memory_id || this.generateMemoryId();
 
@@ -400,10 +462,12 @@ export class SyncMemory {
     user_id: string,
     memory_types?: MemoryType[],
     top_k: number = 10,
-    min_relevance: number = 0.7
+    min_relevance: number = 0.7,
   ): any[] {
     console.log(`🔍 Searching memories (sync): "${query}" for user ${user_id}`);
-    console.log(`🎯 Types: ${memory_types?.join(', ') || 'all'}, Top K: ${top_k}, Min relevance: ${min_relevance}`);
+    console.log(
+      `🎯 Types: ${memory_types?.join(", ") || "all"}, Top K: ${top_k}, Min relevance: ${min_relevance}`,
+    );
 
     return []; // Would be implemented with sync HTTP calls
   }
@@ -418,7 +482,7 @@ export class SyncMemory {
     user_id: string,
     content?: string,
     metadata?: Record<string, any>,
-    importance_score?: number
+    importance_score?: number,
   ): MemoryEntry | null {
     console.log(`✏️  Updating memory (sync): ${memory_id} for user ${user_id}`);
     return null; // Would be implemented with sync HTTP calls
@@ -429,14 +493,27 @@ export class SyncMemory {
     return true; // Would be implemented with sync HTTP calls
   }
 
-  getMemoriesByType(user_id: string, memory_type: MemoryType, limit: number): MemoryEntry[] {
-    console.log(`📚 Getting memories by type (sync): ${memory_type} for user ${user_id}, limit: ${limit}`);
+  getMemoriesByType(
+    user_id: string,
+    memory_type: MemoryType,
+    limit: number,
+  ): MemoryEntry[] {
+    console.log(
+      `📚 Getting memories by type (sync): ${memory_type} for user ${user_id}, limit: ${limit}`,
+    );
     return []; // Would be implemented with sync HTTP calls
   }
 
-  listAllMemories(user_id: string, limit: number, sort_by: string, ascending: boolean): MemoryEntry[] {
+  listAllMemories(
+    user_id: string,
+    limit: number,
+    sort_by: string,
+    ascending: boolean,
+  ): MemoryEntry[] {
     console.log(`📋 Listing all memories (sync) for user ${user_id}`);
-    console.log(`📊 Limit: ${limit}, Sort by: ${sort_by}, Ascending: ${ascending}`);
+    console.log(
+      `📊 Limit: ${limit}, Sort by: ${sort_by}, Ascending: ${ascending}`,
+    );
     return []; // Would be implemented with sync HTTP calls
   }
 
@@ -458,10 +535,13 @@ export class SyncMemory {
   }
 
   private generateMemoryId(): string {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-      const r = (Math.random() * 16) | 0;
-      const v = c == 'x' ? r : (r & 0x3) | 0x8;
-      return v.toString(16);
-    });
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+      /[xy]/g,
+      function (c) {
+        const r = (Math.random() * 16) | 0;
+        const v = c == "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      },
+    );
   }
 }

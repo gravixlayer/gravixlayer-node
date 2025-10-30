@@ -1,5 +1,10 @@
-import { GravixLayer } from '../client';
-import { Completion, CompletionCreateParams, CompletionChoice, CompletionUsage } from '../types/completions';
+import { GravixLayer } from "../client";
+import {
+  Completion,
+  CompletionCreateParams,
+  CompletionChoice,
+  CompletionUsage,
+} from "../types/completions";
 
 /**
  * Completions resource for prompt-based text generation.
@@ -11,8 +16,12 @@ export class Completions {
   constructor(private client: GravixLayer) {}
 
   async create(params: CompletionCreateParams): Promise<Completion>;
-  async create(params: CompletionCreateParams & { stream: true }): Promise<AsyncIterable<Completion>>;
-  async create(params: CompletionCreateParams): Promise<Completion | AsyncIterable<Completion>> {
+  async create(
+    params: CompletionCreateParams & { stream: true },
+  ): Promise<AsyncIterable<Completion>>;
+  async create(
+    params: CompletionCreateParams,
+  ): Promise<Completion | AsyncIterable<Completion>> {
     const data: any = {
       model: params.model,
       prompt: params.prompt,
@@ -26,31 +35,44 @@ export class Completions {
     if (params.logprobs !== undefined) data.logprobs = params.logprobs;
     if (params.echo !== undefined) data.echo = params.echo;
     if (params.stop !== undefined) data.stop = params.stop;
-    if (params.presence_penalty !== undefined) data.presence_penalty = params.presence_penalty;
-    if (params.frequency_penalty !== undefined) data.frequency_penalty = params.frequency_penalty;
+    if (params.presence_penalty !== undefined)
+      data.presence_penalty = params.presence_penalty;
+    if (params.frequency_penalty !== undefined)
+      data.frequency_penalty = params.frequency_penalty;
     if (params.best_of !== undefined) data.best_of = params.best_of;
     if (params.logit_bias !== undefined) data.logit_bias = params.logit_bias;
     if (params.user !== undefined) data.user = params.user;
 
-    return params.stream ? this._createStream(data) : this._createNonStream(data);
+    return params.stream
+      ? this._createStream(data)
+      : this._createNonStream(data);
   }
 
   private async _createNonStream(data: any): Promise<Completion> {
-    const response = await this.client._makeRequest('POST', 'completions', data);
+    const response = await this.client._makeRequest(
+      "POST",
+      "completions",
+      data,
+    );
     const responseData = await response.json();
     return this._parseResponse(responseData);
   }
 
   private async *_createStream(data: any): AsyncIterable<Completion> {
-    const response = await this.client._makeRequest('POST', 'completions', data, true);
+    const response = await this.client._makeRequest(
+      "POST",
+      "completions",
+      data,
+      true,
+    );
 
     if (!response.body) {
-      throw new Error('No response body for streaming');
+      throw new Error("No response body for streaming");
     }
 
     // node-fetch v3 returns a ReadableStream, but we need to handle it differently
     const decoder = new TextDecoder();
-    let buffer = '';
+    let buffer = "";
 
     try {
       // For node-fetch, response.body is a ReadableStream
@@ -60,19 +82,19 @@ export class Completions {
       if (reader[Symbol.asyncIterator]) {
         for await (const chunk of reader) {
           buffer += decoder.decode(chunk, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
 
           for (let line of lines) {
             line = line.trim();
 
             // Handle SSE format
-            if (line.startsWith('data: ')) {
+            if (line.startsWith("data: ")) {
               line = line.slice(6);
             }
 
             // Skip empty lines and [DONE] marker
-            if (!line || line === '[DONE]') {
+            if (!line || line === "[DONE]") {
               continue;
             }
 
@@ -98,19 +120,19 @@ export class Completions {
             if (done) break;
 
             buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
 
             for (let line of lines) {
               line = line.trim();
 
               // Handle SSE format
-              if (line.startsWith('data: ')) {
+              if (line.startsWith("data: ")) {
                 line = line.slice(6);
               }
 
               // Skip empty lines and [DONE] marker
-              if (!line || line === '[DONE]') {
+              if (!line || line === "[DONE]") {
                 continue;
               }
 
@@ -141,18 +163,18 @@ export class Completions {
 
     if (respData.choices && Array.isArray(respData.choices)) {
       for (const choiceData of respData.choices) {
-        let text = '';
+        let text = "";
 
         if (isStream) {
           // For streaming, get text from delta or text field
           if (choiceData.delta) {
-            text = choiceData.delta.content || choiceData.delta.text || '';
+            text = choiceData.delta.content || choiceData.delta.text || "";
           } else if (choiceData.text !== undefined) {
             text = choiceData.text;
           }
         } else {
           // For non-streaming, get text directly
-          text = choiceData.text || '';
+          text = choiceData.text || "";
         }
 
         const choice: CompletionChoice = {
@@ -167,8 +189,8 @@ export class Completions {
 
     // Fallback: create a single choice if no choices found
     if (choices.length === 0) {
-      let text = '';
-      if (typeof respData === 'string') {
+      let text = "";
+      if (typeof respData === "string") {
         text = respData;
       } else if (respData.text) {
         text = respData.text;
@@ -179,13 +201,13 @@ export class Completions {
       choices.push({
         text,
         index: 0,
-        finish_reason: isStream ? null : 'stop',
+        finish_reason: isStream ? null : "stop",
       });
     }
 
     // Parse usage if available
     let usage: CompletionUsage | undefined;
-    if (respData.usage && typeof respData.usage === 'object') {
+    if (respData.usage && typeof respData.usage === "object") {
       usage = {
         prompt_tokens: respData.usage.prompt_tokens || 0,
         completion_tokens: respData.usage.completion_tokens || 0,
@@ -195,9 +217,9 @@ export class Completions {
 
     return {
       id: respData.id || `cmpl-${Date.now()}`,
-      object: isStream ? 'text_completion.chunk' : 'text_completion',
+      object: isStream ? "text_completion.chunk" : "text_completion",
       created: respData.created || Math.floor(Date.now() / 1000),
-      model: respData.model || 'unknown',
+      model: respData.model || "unknown",
       choices,
       usage,
     };

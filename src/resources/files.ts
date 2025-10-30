@@ -1,5 +1,5 @@
-import FormData from 'form-data';
-import { createReadStream, statSync } from 'fs';
+import FormData from "form-data";
+import { createReadStream, statSync } from "fs";
 import {
   FileObject,
   FileUploadResponse,
@@ -7,8 +7,11 @@ import {
   FileDeleteResponse,
   FileCreateParams,
   FILE_PURPOSES,
-} from '../types/files';
-import { GravixLayerBadRequestError, GravixLayerAuthenticationError } from '../types/exceptions';
+} from "../types/files";
+import {
+  GravixLayerBadRequestError,
+  GravixLayerAuthenticationError,
+} from "../types/exceptions";
 
 export class Files {
   constructor(private client: any) {}
@@ -21,70 +24,87 @@ export class Files {
 
     // Validate required parameters
     if (!file) {
-      throw new GravixLayerBadRequestError('file is required');
+      throw new GravixLayerBadRequestError("file is required");
     }
 
     if (!purpose) {
-      throw new GravixLayerBadRequestError('purpose is required');
+      throw new GravixLayerBadRequestError("purpose is required");
     }
 
     // Validate purpose
     if (!FILE_PURPOSES.includes(purpose)) {
-      throw new GravixLayerBadRequestError(`Invalid purpose. Supported: ${FILE_PURPOSES.join(', ')}`);
+      throw new GravixLayerBadRequestError(
+        `Invalid purpose. Supported: ${FILE_PURPOSES.join(", ")}`,
+      );
     }
 
     // Prepare form data
     const formData = new FormData();
-    formData.append('purpose', purpose);
+    formData.append("purpose", purpose);
 
     if (expires_after !== undefined) {
       if (!Number.isInteger(expires_after) || expires_after <= 0) {
-        throw new GravixLayerBadRequestError('expires_after must be a positive integer (seconds)');
+        throw new GravixLayerBadRequestError(
+          "expires_after must be a positive integer (seconds)",
+        );
       }
-      formData.append('expires_after', expires_after.toString());
+      formData.append("expires_after", expires_after.toString());
     }
 
     // Handle file input
-    if (typeof file === 'string') {
+    if (typeof file === "string") {
       // File path
       try {
         const stats = statSync(file);
         if (stats.size === 0) {
-          throw new GravixLayerBadRequestError('File size must be between 1 byte and 200MB');
+          throw new GravixLayerBadRequestError(
+            "File size must be between 1 byte and 200MB",
+          );
         }
         if (stats.size > 200 * 1024 * 1024) {
           // 200MB
-          throw new GravixLayerBadRequestError('File size must be between 1 byte and 200MB');
+          throw new GravixLayerBadRequestError(
+            "File size must be between 1 byte and 200MB",
+          );
         }
 
-        const uploadFilename = filename || file.split('/').pop() || 'uploaded_file';
-        formData.append('file', createReadStream(file), uploadFilename);
+        const uploadFilename =
+          filename || file.split("/").pop() || "uploaded_file";
+        formData.append("file", createReadStream(file), uploadFilename);
       } catch (error: any) {
-        if (error.code === 'ENOENT') {
+        if (error.code === "ENOENT") {
           throw new GravixLayerBadRequestError(`File not found: ${file}`);
         }
         throw error;
       }
     } else if (file instanceof Buffer) {
-      const uploadFilename = filename || 'uploaded_file';
-      formData.append('file', file, uploadFilename);
+      const uploadFilename = filename || "uploaded_file";
+      formData.append("file", file, uploadFilename);
     } else {
       // File object or stream
-      const uploadFilename = filename || (file as any).name || 'uploaded_file';
-      formData.append('file', file as any, uploadFilename);
+      const uploadFilename = filename || (file as any).name || "uploaded_file";
+      formData.append("file", file as any, uploadFilename);
     }
 
     // Use files API endpoint
     const originalBaseURL = this.client.baseURL;
-    this.client.baseURL = this.client.baseURL.replace('/v1/inference', '/v1/files');
+    this.client.baseURL = this.client.baseURL.replace(
+      "/v1/inference",
+      "/v1/files",
+    );
 
     try {
-      const response = await this.client._makeRequest('POST', '', formData, false);
+      const response = await this.client._makeRequest(
+        "POST",
+        "",
+        formData,
+        false,
+      );
 
       const result = (await response.json()) as any;
       return {
-        message: result.message || 'file uploaded',
-        file_name: result.file_name || result.filename || '',
+        message: result.message || "file uploaded",
+        file_name: result.file_name || result.filename || "",
         purpose: result.purpose || purpose,
       };
     } finally {
@@ -104,20 +124,23 @@ export class Files {
    */
   async list(): Promise<FileListResponse> {
     const originalBaseURL = this.client.baseURL;
-    this.client.baseURL = this.client.baseURL.replace('/v1/inference', '/v1/files');
+    this.client.baseURL = this.client.baseURL.replace(
+      "/v1/inference",
+      "/v1/files",
+    );
 
     try {
-      const response = await this.client._makeRequest('GET', '');
+      const response = await this.client._makeRequest("GET", "");
       const result = await response.json();
 
       const filesData = result.data || [];
       const files: FileObject[] = filesData.map((fileData: any) => ({
-        id: fileData.id || '',
-        object: fileData.object || 'file',
+        id: fileData.id || "",
+        object: fileData.object || "file",
         bytes: fileData.bytes || 0,
         created_at: fileData.created_at || 0,
-        filename: fileData.filename || '',
-        purpose: fileData.purpose || '',
+        filename: fileData.filename || "",
+        purpose: fileData.purpose || "",
         expires_after: fileData.expires_after,
       }));
 
@@ -132,23 +155,26 @@ export class Files {
    */
   async retrieve(fileId: string): Promise<FileObject> {
     if (!fileId) {
-      throw new GravixLayerBadRequestError('file ID required');
+      throw new GravixLayerBadRequestError("file ID required");
     }
 
     const originalBaseURL = this.client.baseURL;
-    this.client.baseURL = this.client.baseURL.replace('/v1/inference', '/v1/files');
+    this.client.baseURL = this.client.baseURL.replace(
+      "/v1/inference",
+      "/v1/files",
+    );
 
     try {
-      const response = await this.client._makeRequest('GET', fileId);
+      const response = await this.client._makeRequest("GET", fileId);
       const result = await response.json();
 
       return {
-        id: result.id || '',
-        object: result.object || 'file',
+        id: result.id || "",
+        object: result.object || "file",
         bytes: result.bytes || 0,
         created_at: result.created_at || 0,
-        filename: result.filename || '',
-        purpose: result.purpose || '',
+        filename: result.filename || "",
+        purpose: result.purpose || "",
         expires_after: result.expires_after,
       };
     } finally {
@@ -161,17 +187,23 @@ export class Files {
    */
   async content(fileId: string): Promise<Buffer> {
     if (!fileId) {
-      throw new GravixLayerBadRequestError('file ID required');
+      throw new GravixLayerBadRequestError("file ID required");
     }
 
     const originalBaseURL = this.client.baseURL;
-    this.client.baseURL = this.client.baseURL.replace('/v1/inference', '/v1/files');
+    this.client.baseURL = this.client.baseURL.replace(
+      "/v1/inference",
+      "/v1/files",
+    );
 
     try {
-      const response = await this.client._makeRequest('GET', `${fileId}/content`);
+      const response = await this.client._makeRequest(
+        "GET",
+        `${fileId}/content`,
+      );
 
       if (!response.ok) {
-        let errorMessage = 'Failed to download file content';
+        let errorMessage = "Failed to download file content";
 
         try {
           const errorText = await response.text();
@@ -184,9 +216,9 @@ export class Files {
         }
 
         if (response.status === 404) {
-          throw new GravixLayerBadRequestError('file not found');
+          throw new GravixLayerBadRequestError("file not found");
         } else if (response.status === 500) {
-          throw new GravixLayerBadRequestError('storage error');
+          throw new GravixLayerBadRequestError("storage error");
         } else {
           throw new GravixLayerBadRequestError(errorMessage);
         }
@@ -203,20 +235,23 @@ export class Files {
    */
   async delete(fileId: string): Promise<FileDeleteResponse> {
     if (!fileId) {
-      throw new GravixLayerBadRequestError('File ID is required');
+      throw new GravixLayerBadRequestError("File ID is required");
     }
 
     const originalBaseURL = this.client.baseURL;
-    this.client.baseURL = this.client.baseURL.replace('/v1/inference', '/v1/files');
+    this.client.baseURL = this.client.baseURL.replace(
+      "/v1/inference",
+      "/v1/files",
+    );
 
     try {
-      const response = await this.client._makeRequest('DELETE', fileId);
+      const response = await this.client._makeRequest("DELETE", fileId);
       const result = await response.json();
 
       return {
-        message: result.message || '',
-        file_id: result.file_id || '',
-        file_name: result.file_name || '',
+        message: result.message || "",
+        file_id: result.file_id || "",
+        file_name: result.file_name || "",
       };
     } finally {
       this.client.baseURL = originalBaseURL;

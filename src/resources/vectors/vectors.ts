@@ -16,15 +16,15 @@ import {
   VectorSearchRequest,
   TextSearchRequest,
   UpdateVectorRequest,
-} from '../../types/vectors';
-import { GravixLayerBadRequestError } from '../../types/exceptions';
+} from "../../types/vectors";
+import { GravixLayerBadRequestError } from "../../types/exceptions";
 
 export class Vectors {
   private baseUrl: string;
 
   constructor(
     private client: any,
-    private indexId: string
+    private indexId: string,
   ) {
     this.baseUrl = `https://api.gravixlayer.com/v1/vectors/${indexId}`;
   }
@@ -36,7 +36,7 @@ export class Vectors {
     embedding: number[],
     id?: string,
     metadata?: Record<string, any>,
-    delete_protection: boolean = false
+    delete_protection: boolean = false,
   ): Promise<Vector> {
     const vectorData: any = {
       embedding,
@@ -53,7 +53,11 @@ export class Vectors {
       vectors: [vectorData],
     };
 
-    const response = await this.client._makeRequest('POST', `${this.baseUrl}/upsert`, data);
+    const response = await this.client._makeRequest(
+      "POST",
+      `${this.baseUrl}/upsert`,
+      data,
+    );
 
     const result = await response.json();
 
@@ -81,7 +85,7 @@ export class Vectors {
     } else if (result.error) {
       throw new Error(`Vector upsert failed: ${result.error}`);
     } else {
-      throw new Error('Unexpected response format from upsert API');
+      throw new Error("Unexpected response format from upsert API");
     }
   }
 
@@ -93,7 +97,7 @@ export class Vectors {
     model: string,
     id?: string,
     metadata?: Record<string, any>,
-    delete_protection: boolean = false
+    delete_protection: boolean = false,
   ): Promise<TextVector> {
     const vectorData: any = {
       text,
@@ -111,7 +115,11 @@ export class Vectors {
       vectors: [vectorData],
     };
 
-    const response = await this.client._makeRequest('POST', `${this.baseUrl}/text/upsert`, data);
+    const response = await this.client._makeRequest(
+      "POST",
+      `${this.baseUrl}/text/upsert`,
+      data,
+    );
 
     const result = await response.json();
 
@@ -153,17 +161,23 @@ export class Vectors {
     } else if (result.error) {
       throw new Error(`Text vector upsert failed: ${result.error}`);
     } else {
-      throw new Error('Unexpected response format from upsert API');
+      throw new Error("Unexpected response format from upsert API");
     }
   }
 
   /**
    * Insert or update multiple vectors in a single operation
    */
-  async batchUpsert(vectors: Record<string, any>[]): Promise<BatchUpsertResponse> {
+  async batchUpsert(
+    vectors: Record<string, any>[],
+  ): Promise<BatchUpsertResponse> {
     const data = { vectors };
 
-    const response = await this.client._makeRequest('POST', `${this.baseUrl}/batch`, data);
+    const response = await this.client._makeRequest(
+      "POST",
+      `${this.baseUrl}/batch`,
+      data,
+    );
 
     const result = await response.json();
     return result as BatchUpsertResponse;
@@ -172,10 +186,16 @@ export class Vectors {
   /**
    * Convert multiple texts to vectors and store them
    */
-  async batchUpsertText(vectors: Record<string, any>[]): Promise<BatchUpsertResponse> {
+  async batchUpsertText(
+    vectors: Record<string, any>[],
+  ): Promise<BatchUpsertResponse> {
     const data = { vectors };
 
-    const response = await this.client._makeRequest('POST', `${this.baseUrl}/text/batch`, data);
+    const response = await this.client._makeRequest(
+      "POST",
+      `${this.baseUrl}/text/batch`,
+      data,
+    );
 
     const result = await response.json();
     return result as BatchUpsertResponse;
@@ -185,7 +205,10 @@ export class Vectors {
    * Retrieve a specific vector by ID
    */
   async get(vectorId: string): Promise<Vector> {
-    const response = await this.client._makeRequest('GET', `${this.baseUrl}/${vectorId}`);
+    const response = await this.client._makeRequest(
+      "GET",
+      `${this.baseUrl}/${vectorId}`,
+    );
 
     const result = await response.json();
     return result as Vector;
@@ -194,7 +217,11 @@ export class Vectors {
   /**
    * Update vector metadata and delete protection settings
    */
-  async update(vectorId: string, metadata?: Record<string, any>, delete_protection?: boolean): Promise<Vector> {
+  async update(
+    vectorId: string,
+    metadata?: Record<string, any>,
+    delete_protection?: boolean,
+  ): Promise<Vector> {
     const data: any = {};
     if (metadata !== undefined) {
       data.metadata = metadata;
@@ -204,10 +231,14 @@ export class Vectors {
     }
 
     if (Object.keys(data).length === 0) {
-      throw new Error('At least one field must be provided for update');
+      throw new Error("At least one field must be provided for update");
     }
 
-    const response = await this.client._makeRequest('PUT', `${this.baseUrl}/${vectorId}`, data);
+    const response = await this.client._makeRequest(
+      "PUT",
+      `${this.baseUrl}/${vectorId}`,
+      data,
+    );
 
     const result = await response.json();
 
@@ -223,7 +254,9 @@ export class Vectors {
    * Delete a specific vector using batch delete endpoint
    */
   async delete(vectorId: string): Promise<void> {
-    await this.client._makeRequest('POST', `${this.baseUrl}/delete`, { vector_ids: [vectorId] });
+    await this.client._makeRequest("POST", `${this.baseUrl}/delete`, {
+      vector_ids: [vectorId],
+    });
   }
 
   /**
@@ -231,12 +264,16 @@ export class Vectors {
    */
   async batchDelete(vectorIds: string[]): Promise<Record<string, any>> {
     if (!vectorIds || vectorIds.length === 0) {
-      throw new Error('At least one vector ID must be provided');
+      throw new Error("At least one vector ID must be provided");
     }
 
     const data = { vector_ids: vectorIds };
 
-    const response = await this.client._makeRequest('POST', `${this.baseUrl}/delete`, data);
+    const response = await this.client._makeRequest(
+      "POST",
+      `${this.baseUrl}/delete`,
+      data,
+    );
 
     return response.json();
   }
@@ -245,7 +282,10 @@ export class Vectors {
    * Retrieve a list of vector IDs in the index
    */
   async listIds(): Promise<VectorListResponse> {
-    const response = await this.client._makeRequest('GET', `${this.baseUrl}/list`);
+    const response = await this.client._makeRequest(
+      "GET",
+      `${this.baseUrl}/list`,
+    );
 
     const result = await response.json();
     return result as VectorListResponse;
@@ -257,13 +297,13 @@ export class Vectors {
   async list(vectorIds?: string[]): Promise<VectorDictResponse> {
     const params: any = {};
     if (vectorIds) {
-      params.vector_ids = vectorIds.join(',');
+      params.vector_ids = vectorIds.join(",");
     }
 
     const response = await this.client._makeRequest(
-      'GET',
+      "GET",
       `${this.baseUrl}/fetch`,
-      Object.keys(params).length > 0 ? params : undefined
+      Object.keys(params).length > 0 ? params : undefined,
     );
 
     const result = await response.json();
@@ -276,17 +316,18 @@ export class Vectors {
       for (const vectorData of result.vectors) {
         // Ensure all required fields are present with defaults
         vectorData.delete_protection = vectorData.delete_protection || false;
-        vectorData.created_at = vectorData.created_at || '';
-        vectorData.updated_at = vectorData.updated_at || '';
+        vectorData.created_at = vectorData.created_at || "";
+        vectorData.updated_at = vectorData.updated_at || "";
         vectors[vectorData.id] = vectorData as Vector;
       }
     } else {
       // Old API format: dictionary of vectors (fallback)
       for (const [vectorId, vectorData] of Object.entries(result.vectors)) {
         // Ensure all required fields are present with defaults
-        (vectorData as any).delete_protection = (vectorData as any).delete_protection || false;
-        (vectorData as any).created_at = (vectorData as any).created_at || '';
-        (vectorData as any).updated_at = (vectorData as any).updated_at || '';
+        (vectorData as any).delete_protection =
+          (vectorData as any).delete_protection || false;
+        (vectorData as any).created_at = (vectorData as any).created_at || "";
+        (vectorData as any).updated_at = (vectorData as any).updated_at || "";
         vectors[vectorId] = vectorData as Vector;
       }
     }
@@ -302,10 +343,10 @@ export class Vectors {
     top_k: number,
     filter?: Record<string, any>,
     include_metadata: boolean = true,
-    include_values: boolean = true
+    include_values: boolean = true,
   ): Promise<VectorSearchResponse> {
     if (!(top_k >= 1 && top_k <= 1000)) {
-      throw new Error('top_k must be between 1 and 1000');
+      throw new Error("top_k must be between 1 and 1000");
     }
 
     const data: any = {
@@ -319,7 +360,11 @@ export class Vectors {
       data.filter = filter;
     }
 
-    const response = await this.client._makeRequest('POST', `${this.baseUrl}/search`, data);
+    const response = await this.client._makeRequest(
+      "POST",
+      `${this.baseUrl}/search`,
+      data,
+    );
 
     const result = await response.json();
     return {
@@ -337,10 +382,10 @@ export class Vectors {
     top_k: number,
     filter?: Record<string, any>,
     include_metadata: boolean = true,
-    include_values: boolean = true
+    include_values: boolean = true,
   ): Promise<TextSearchResponse> {
     if (!(top_k >= 1 && top_k <= 1000)) {
-      throw new Error('top_k must be between 1 and 1000');
+      throw new Error("top_k must be between 1 and 1000");
     }
 
     const data: any = {
@@ -355,7 +400,11 @@ export class Vectors {
       data.filter = filter;
     }
 
-    const response = await this.client._makeRequest('POST', `${this.baseUrl}/search/text`, data);
+    const response = await this.client._makeRequest(
+      "POST",
+      `${this.baseUrl}/search/text`,
+      data,
+    );
 
     const result = await response.json();
     return {

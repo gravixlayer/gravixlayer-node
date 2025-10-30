@@ -1,9 +1,9 @@
 /**
  * Main Sandbox resource that contains sandboxes and templates
  */
-import { GravixLayer } from '../../client';
-import { Sandboxes } from './sandboxes';
-import { SandboxTemplates } from './templates';
+import { GravixLayer } from "../../client";
+import { Sandboxes } from "./sandboxes";
+import { SandboxTemplates } from "./templates";
 
 export class SandboxResource {
   public sandboxes: Sandboxes;
@@ -15,6 +15,6 @@ export class SandboxResource {
   }
 }
 
-export { Sandbox } from './sandbox-class';
-export * from './sandboxes';
-export * from './templates';
+export { Sandbox } from "./sandbox-class";
+export * from "./sandboxes";
+export * from "./templates";

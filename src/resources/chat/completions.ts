@@ -1,4 +1,4 @@
-import { GravixLayer } from '../../client';
+import { GravixLayer } from "../../client";
 import {
   ChatCompletion,
   ChatCompletionCreateParams,
@@ -8,17 +8,21 @@ import {
   ChatCompletionDelta,
   FunctionCall,
   ToolCall,
-} from '../../types/chat';
+} from "../../types/chat";
 
 export class ChatCompletions {
   constructor(private client: GravixLayer) {}
 
   async create(params: ChatCompletionCreateParams): Promise<ChatCompletion>;
-  async create(params: ChatCompletionCreateParams & { stream: true }): Promise<AsyncIterable<ChatCompletion>>;
-  async create(params: ChatCompletionCreateParams): Promise<ChatCompletion | AsyncIterable<ChatCompletion>> {
+  async create(
+    params: ChatCompletionCreateParams & { stream: true },
+  ): Promise<AsyncIterable<ChatCompletion>>;
+  async create(
+    params: ChatCompletionCreateParams,
+  ): Promise<ChatCompletion | AsyncIterable<ChatCompletion>> {
     // Convert message objects to plain objects if needed
     const serializedMessages = params.messages.map((msg) => {
-      if (typeof msg === 'object' && msg !== null) {
+      if (typeof msg === "object" && msg !== null) {
         const msgDict: any = {
           role: msg.role,
           content: msg.content,
@@ -51,31 +55,44 @@ export class ChatCompletions {
     if (params.temperature !== undefined) data.temperature = params.temperature;
     if (params.max_tokens !== undefined) data.max_tokens = params.max_tokens;
     if (params.top_p !== undefined) data.top_p = params.top_p;
-    if (params.frequency_penalty !== undefined) data.frequency_penalty = params.frequency_penalty;
-    if (params.presence_penalty !== undefined) data.presence_penalty = params.presence_penalty;
+    if (params.frequency_penalty !== undefined)
+      data.frequency_penalty = params.frequency_penalty;
+    if (params.presence_penalty !== undefined)
+      data.presence_penalty = params.presence_penalty;
     if (params.stop !== undefined) data.stop = params.stop;
     if (params.tools !== undefined) data.tools = params.tools;
     if (params.tool_choice !== undefined) data.tool_choice = params.tool_choice;
 
-    return params.stream ? this._createStream(data) : this._createNonStream(data);
+    return params.stream
+      ? this._createStream(data)
+      : this._createNonStream(data);
   }
 
   private async _createNonStream(data: any): Promise<ChatCompletion> {
-    const response = await this.client._makeRequest('POST', 'chat/completions', data);
+    const response = await this.client._makeRequest(
+      "POST",
+      "chat/completions",
+      data,
+    );
     const responseData = await response.json();
     return this._parseResponse(responseData);
   }
 
   private async *_createStream(data: any): AsyncIterable<ChatCompletion> {
-    const response = await this.client._makeRequest('POST', 'chat/completions', data, true);
+    const response = await this.client._makeRequest(
+      "POST",
+      "chat/completions",
+      data,
+      true,
+    );
 
     if (!response.body) {
-      throw new Error('No response body for streaming');
+      throw new Error("No response body for streaming");
     }
 
     // node-fetch v3 returns a ReadableStream, but we need to handle it differently
     const decoder = new TextDecoder();
-    let buffer = '';
+    let buffer = "";
 
     try {
       // For node-fetch, response.body is a ReadableStream
@@ -85,26 +102,26 @@ export class ChatCompletions {
       if (reader[Symbol.asyncIterator]) {
         for await (const chunk of reader) {
           buffer += decoder.decode(chunk, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
 
           for (let line of lines) {
             line = line.trim();
 
             // Handle SSE format
-            if (line.startsWith('data: ')) {
+            if (line.startsWith("data: ")) {
               line = line.slice(6);
             }
 
             // Skip empty lines and [DONE] marker
-            if (!line || line === '[DONE]') {
+            if (!line || line === "[DONE]") {
               continue;
             }
 
             try {
               const chunkData = JSON.parse(line);
 
-              if (chunkData && typeof chunkData === 'object') {
+              if (chunkData && typeof chunkData === "object") {
                 const parsedChunk = this._parseResponse(chunkData, true);
 
                 if (parsedChunk.choices && parsedChunk.choices.length > 0) {
@@ -126,26 +143,26 @@ export class ChatCompletions {
             if (done) break;
 
             buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
 
             for (let line of lines) {
               line = line.trim();
 
               // Handle SSE format
-              if (line.startsWith('data: ')) {
+              if (line.startsWith("data: ")) {
                 line = line.slice(6);
               }
 
               // Skip empty lines and [DONE] marker
-              if (!line || line === '[DONE]') {
+              if (!line || line === "[DONE]") {
                 continue;
               }
 
               try {
                 const chunkData = JSON.parse(line);
 
-                if (chunkData && typeof chunkData === 'object') {
+                if (chunkData && typeof chunkData === "object") {
                   const parsedChunk = this._parseResponse(chunkData, true);
 
                   if (parsedChunk.choices && parsedChunk.choices.length > 0) {
@@ -160,24 +177,31 @@ export class ChatCompletions {
           }
           streamReader.releaseLock();
         } else {
-          throw new Error('Streaming not supported with this fetch implementation');
+          throw new Error(
+            "Streaming not supported with this fetch implementation",
+          );
         }
       }
     } catch (error) {
-      throw new Error(`Streaming error: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Streaming error: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
-  private _parseResponse(respData: any, isStream: boolean = false): ChatCompletion {
-    if (!respData || typeof respData !== 'object') {
-      throw new Error('Invalid response data');
+  private _parseResponse(
+    respData: any,
+    isStream: boolean = false,
+  ): ChatCompletion {
+    if (!respData || typeof respData !== "object") {
+      throw new Error("Invalid response data");
     }
 
     const choices: ChatCompletionChoice[] = [];
 
     if (respData.choices && Array.isArray(respData.choices)) {
       for (const choiceData of respData.choices) {
-        if (!choiceData || typeof choiceData !== 'object') {
+        if (!choiceData || typeof choiceData !== "object") {
           continue;
         }
 
@@ -187,7 +211,7 @@ export class ChatCompletions {
           let deltaRole: string | null = null;
           let deltaToolCalls: ToolCall[] | null = null;
 
-          if (choiceData.delta && typeof choiceData.delta === 'object') {
+          if (choiceData.delta && typeof choiceData.delta === "object") {
             const delta = choiceData.delta;
             deltaContent = delta.content || null;
             deltaRole = delta.role || null;
@@ -196,22 +220,25 @@ export class ChatCompletions {
             if (delta.tool_calls && Array.isArray(delta.tool_calls)) {
               deltaToolCalls = [];
               for (const toolCallData of delta.tool_calls) {
-                if (toolCallData && typeof toolCallData === 'object') {
+                if (toolCallData && typeof toolCallData === "object") {
                   const functionData = toolCallData.function || {};
                   const functionCall: FunctionCall = {
-                    name: functionData.name || '',
-                    arguments: functionData.arguments || '{}',
+                    name: functionData.name || "",
+                    arguments: functionData.arguments || "{}",
                   };
                   const toolCall: ToolCall = {
-                    id: toolCallData.id || '',
-                    type: toolCallData.type || 'function',
+                    id: toolCallData.id || "",
+                    type: toolCallData.type || "function",
                     function: functionCall,
                   };
                   deltaToolCalls.push(toolCall);
                 }
               }
             }
-          } else if (choiceData.message && typeof choiceData.message === 'object') {
+          } else if (
+            choiceData.message &&
+            typeof choiceData.message === "object"
+          ) {
             // Fallback: treat message as delta
             const message = choiceData.message;
             deltaContent = message.content || null;
@@ -226,8 +253,8 @@ export class ChatCompletions {
           };
 
           const msg: ChatCompletionMessage = {
-            role: deltaRole || 'assistant',
-            content: deltaContent || '',
+            role: deltaRole || "assistant",
+            content: deltaContent || "",
             tool_calls: deltaToolCalls || undefined,
           };
 
@@ -246,15 +273,15 @@ export class ChatCompletions {
           if (messageData.tool_calls && Array.isArray(messageData.tool_calls)) {
             toolCalls = [];
             for (const toolCallData of messageData.tool_calls) {
-              if (toolCallData && typeof toolCallData === 'object') {
+              if (toolCallData && typeof toolCallData === "object") {
                 const functionData = toolCallData.function || {};
                 const functionCall: FunctionCall = {
-                  name: functionData.name || '',
-                  arguments: functionData.arguments || '{}',
+                  name: functionData.name || "",
+                  arguments: functionData.arguments || "{}",
                 };
                 const toolCall: ToolCall = {
-                  id: toolCallData.id || '',
-                  type: toolCallData.type || 'function',
+                  id: toolCallData.id || "",
+                  type: toolCallData.type || "function",
                   function: functionCall,
                 };
                 toolCalls.push(toolCall);
@@ -263,7 +290,7 @@ export class ChatCompletions {
           }
 
           const msg: ChatCompletionMessage = {
-            role: messageData.role || 'assistant',
+            role: messageData.role || "assistant",
             content: messageData.content || null,
             tool_calls: toolCalls,
             tool_call_id: messageData.tool_call_id,
@@ -280,8 +307,8 @@ export class ChatCompletions {
 
     // Fallback: create a single choice if no choices found
     if (choices.length === 0) {
-      let content = '';
-      if (typeof respData === 'string') {
+      let content = "";
+      if (typeof respData === "string") {
         content = respData;
       } else if (respData.content) {
         content = respData.content;
@@ -289,7 +316,7 @@ export class ChatCompletions {
 
       if (isStream) {
         const deltaObj: ChatCompletionDelta = { content };
-        const msg: ChatCompletionMessage = { role: 'assistant', content };
+        const msg: ChatCompletionMessage = { role: "assistant", content };
         choices.push({
           index: 0,
           message: msg,
@@ -297,18 +324,18 @@ export class ChatCompletions {
           finish_reason: null,
         });
       } else {
-        const msg: ChatCompletionMessage = { role: 'assistant', content };
+        const msg: ChatCompletionMessage = { role: "assistant", content };
         choices.push({
           index: 0,
           message: msg,
-          finish_reason: 'stop',
+          finish_reason: "stop",
         });
       }
     }
 
     // Parse usage if available
     let usage: ChatCompletionUsage | undefined;
-    if (respData.usage && typeof respData.usage === 'object') {
+    if (respData.usage && typeof respData.usage === "object") {
       usage = {
         prompt_tokens: respData.usage.prompt_tokens || 0,
         completion_tokens: respData.usage.completion_tokens || 0,
@@ -318,9 +345,9 @@ export class ChatCompletions {
 
     return {
       id: respData.id || `chatcmpl-${Date.now()}`,
-      object: isStream ? 'chat.completion.chunk' : 'chat.completion',
+      object: isStream ? "chat.completion.chunk" : "chat.completion",
       created: respData.created || Math.floor(Date.now() / 1000),
-      model: respData.model || 'unknown',
+      model: respData.model || "unknown",
       choices,
       usage,
     };

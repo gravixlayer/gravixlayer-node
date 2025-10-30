@@ -1,9 +1,13 @@
 /**
  * Sandbox class with simplified interface for easy usage
  */
-import { GravixLayer } from '../../client';
-import { Execution } from '../../types/sandbox';
-import type { Sandbox as SandboxType, CodeRunResponse, CommandRunResponse } from '../../types/sandbox';
+import { GravixLayer } from "../../client";
+import { Execution } from "../../types/sandbox";
+import type {
+  Sandbox as SandboxType,
+  CodeRunResponse,
+  CommandRunResponse,
+} from "../../types/sandbox";
 
 export class Sandbox implements SandboxType {
   sandbox_id: string;
@@ -59,9 +63,9 @@ export class Sandbox implements SandboxType {
     });
 
     const sandboxResponse = await client.sandbox.sandboxes.create({
-      provider: options?.provider || 'gravix',
-      region: options?.region || 'eu-west-1',
-      template: options?.template || 'python-base-v1',
+      provider: options?.provider || "gravix",
+      region: options?.region || "eu-west-1",
+      template: options?.template || "python-base-v1",
       timeout: options?.timeout || 300,
       metadata: options?.metadata || {},
     });
@@ -75,16 +79,22 @@ export class Sandbox implements SandboxType {
   /**
    * Execute code in the sandbox
    */
-  async runCode(code: string, language: string = 'python'): Promise<Execution> {
+  async runCode(code: string, language: string = "python"): Promise<Execution> {
     if (!this._alive) {
-      throw new Error('Sandbox has been terminated');
+      throw new Error("Sandbox has been terminated");
     }
 
     if (!this._client) {
-      throw new Error('Client not initialized. Use Sandbox.create() to create a new instance.');
+      throw new Error(
+        "Client not initialized. Use Sandbox.create() to create a new instance.",
+      );
     }
 
-    const response = await this._client.sandbox.sandboxes.runCode(this.sandbox_id, code, { language });
+    const response = await this._client.sandbox.sandboxes.runCode(
+      this.sandbox_id,
+      code,
+      { language },
+    );
 
     return new Execution(response);
   }
@@ -98,21 +108,27 @@ export class Sandbox implements SandboxType {
     options?: {
       working_dir?: string;
       timeout?: number;
-    }
+    },
   ): Promise<Execution> {
     if (!this._alive) {
-      throw new Error('Sandbox has been terminated');
+      throw new Error("Sandbox has been terminated");
     }
 
     if (!this._client) {
-      throw new Error('Client not initialized. Use Sandbox.create() to create a new instance.');
+      throw new Error(
+        "Client not initialized. Use Sandbox.create() to create a new instance.",
+      );
     }
 
-    const response = await this._client.sandbox.sandboxes.runCommand(this.sandbox_id, command, {
-      args: args || [],
-      working_dir: options?.working_dir,
-      timeout: options?.timeout,
-    });
+    const response = await this._client.sandbox.sandboxes.runCommand(
+      this.sandbox_id,
+      command,
+      {
+        args: args || [],
+        working_dir: options?.working_dir,
+        timeout: options?.timeout,
+      },
+    );
 
     return new Execution(response);
   }
@@ -122,14 +138,20 @@ export class Sandbox implements SandboxType {
    */
   async writeFile(path: string, content: string): Promise<void> {
     if (!this._alive) {
-      throw new Error('Sandbox has been terminated');
+      throw new Error("Sandbox has been terminated");
     }
 
     if (!this._client) {
-      throw new Error('Client not initialized. Use Sandbox.create() to create a new instance.');
+      throw new Error(
+        "Client not initialized. Use Sandbox.create() to create a new instance.",
+      );
     }
 
-    await this._client.sandbox.sandboxes.writeFile(this.sandbox_id, path, content);
+    await this._client.sandbox.sandboxes.writeFile(
+      this.sandbox_id,
+      path,
+      content,
+    );
   }
 
   /**
@@ -137,30 +159,40 @@ export class Sandbox implements SandboxType {
    */
   async readFile(path: string): Promise<string> {
     if (!this._alive) {
-      throw new Error('Sandbox has been terminated');
+      throw new Error("Sandbox has been terminated");
     }
 
     if (!this._client) {
-      throw new Error('Client not initialized. Use Sandbox.create() to create a new instance.');
+      throw new Error(
+        "Client not initialized. Use Sandbox.create() to create a new instance.",
+      );
     }
 
-    const response = await this._client.sandbox.sandboxes.readFile(this.sandbox_id, path);
+    const response = await this._client.sandbox.sandboxes.readFile(
+      this.sandbox_id,
+      path,
+    );
     return response.content;
   }
 
   /**
    * List files in a directory
    */
-  async listFiles(path: string = '/home/user'): Promise<string[]> {
+  async listFiles(path: string = "/home/user"): Promise<string[]> {
     if (!this._alive) {
-      throw new Error('Sandbox has been terminated');
+      throw new Error("Sandbox has been terminated");
     }
 
     if (!this._client) {
-      throw new Error('Client not initialized. Use Sandbox.create() to create a new instance.');
+      throw new Error(
+        "Client not initialized. Use Sandbox.create() to create a new instance.",
+      );
     }
 
-    const response = await this._client.sandbox.sandboxes.listFiles(this.sandbox_id, path);
+    const response = await this._client.sandbox.sandboxes.listFiles(
+      this.sandbox_id,
+      path,
+    );
     return response.files.map((f) => f.name);
   }
 
@@ -169,11 +201,13 @@ export class Sandbox implements SandboxType {
    */
   async deleteFile(path: string): Promise<void> {
     if (!this._alive) {
-      throw new Error('Sandbox has been terminated');
+      throw new Error("Sandbox has been terminated");
     }
 
     if (!this._client) {
-      throw new Error('Client not initialized. Use Sandbox.create() to create a new instance.');
+      throw new Error(
+        "Client not initialized. Use Sandbox.create() to create a new instance.",
+      );
     }
 
     await this._client.sandbox.sandboxes.deleteFile(this.sandbox_id, path);
@@ -184,14 +218,20 @@ export class Sandbox implements SandboxType {
    */
   async uploadFile(file: File | Buffer, remotePath: string): Promise<void> {
     if (!this._alive) {
-      throw new Error('Sandbox has been terminated');
+      throw new Error("Sandbox has been terminated");
     }
 
     if (!this._client) {
-      throw new Error('Client not initialized. Use Sandbox.create() to create a new instance.');
+      throw new Error(
+        "Client not initialized. Use Sandbox.create() to create a new instance.",
+      );
     }
 
-    await this._client.sandbox.sandboxes.uploadFile(this.sandbox_id, file, remotePath);
+    await this._client.sandbox.sandboxes.uploadFile(
+      this.sandbox_id,
+      file,
+      remotePath,
+    );
   }
 
   /**
@@ -218,7 +258,7 @@ export class Sandbox implements SandboxType {
 
     try {
       const info = await this._client.sandbox.sandboxes.get(this.sandbox_id);
-      return info.status === 'running';
+      return info.status === "running";
     } catch {
       this._alive = false;
       return false;
@@ -232,8 +272,10 @@ export class Sandbox implements SandboxType {
     console.log(`Created sandbox: ${this.sandbox_id}`);
     console.log(`Template: ${this.template}`);
     console.log(`Status: ${this.status}`);
-    const cpuDisplay = this.cpu_count ? `${this.cpu_count} CPU` : 'Unknown CPU';
-    const memoryDisplay = this.memory_mb ? `${this.memory_mb}MB RAM` : 'Unknown RAM';
+    const cpuDisplay = this.cpu_count ? `${this.cpu_count} CPU` : "Unknown CPU";
+    const memoryDisplay = this.memory_mb
+      ? `${this.memory_mb}MB RAM`
+      : "Unknown RAM";
     console.log(`Resources: ${cpuDisplay}, ${memoryDisplay}`);
     console.log(`Started: ${this.started_at}`);
     console.log(`Timeout: ${this.timeout_at}`);

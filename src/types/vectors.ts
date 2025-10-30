@@ -141,17 +141,26 @@ export interface UpdateVectorRequest {
 }
 
 // Supported metrics and vector types
-export const SUPPORTED_METRICS = ['cosine', 'euclidean', 'dot_product'] as const;
-export const SUPPORTED_VECTOR_TYPES = ['dense'] as const;
-export const SUPPORTED_INDEX_TYPES = ['serverless', 'dedicated'] as const;
-export const SUPPORTED_CLOUD_PROVIDERS = ['AWS', 'GCP', 'Azure', 'Gravix'] as const;
+export const SUPPORTED_METRICS = [
+  "cosine",
+  "euclidean",
+  "dot_product",
+] as const;
+export const SUPPORTED_VECTOR_TYPES = ["dense"] as const;
+export const SUPPORTED_INDEX_TYPES = ["serverless", "dedicated"] as const;
+export const SUPPORTED_CLOUD_PROVIDERS = [
+  "AWS",
+  "GCP",
+  "Azure",
+  "Gravix",
+] as const;
 export const SUPPORTED_REGIONS = [
-  'us-east-1',
-  'us-west-2',
-  'eu-west-1',
-  'us-central1',
-  'eastus',
-  'gl-eu-west1',
+  "us-east-1",
+  "us-west-2",
+  "eu-west-1",
+  "us-central1",
+  "eastus",
+  "gl-eu-west1",
 ] as const;
 
 export type SupportedMetric = (typeof SUPPORTED_METRICS)[number];

@@ -1,8 +1,8 @@
 /**
  * Main vector database resource for GravixLayer SDK
  */
-import { VectorIndexes } from './indexes';
-import { Vectors } from './vectors';
+import { VectorIndexes } from "./indexes";
+import { Vectors } from "./vectors";
 
 export class VectorDatabase {
   public indexes: VectorIndexes;
