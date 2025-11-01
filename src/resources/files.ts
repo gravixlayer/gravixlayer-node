@@ -231,6 +231,54 @@ export class Files {
   }
 
   /**
+   * Download file with enhanced metadata in headers.
+   * Alternative to content() that provides additional file metadata in response headers.
+   */
+  async download(fileId: string): Promise<Buffer> {
+    if (!fileId) {
+      throw new GravixLayerBadRequestError("file ID required");
+    }
+
+    const originalBaseURL = this.client.baseURL;
+    this.client.baseURL = this.client.baseURL.replace(
+      "/v1/inference",
+      "/v1/files",
+    );
+
+    try {
+      const response = await this.client._makeRequest(
+        "GET",
+        `${fileId}/download`,
+      );
+
+      if (!response.ok) {
+        let errorMessage = "Failed to download file";
+
+        try {
+          const errorText = await response.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        } catch (parseError) {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+
+        if (response.status === 404) {
+          throw new GravixLayerBadRequestError("file not found or expired");
+        } else if (response.status === 500) {
+          throw new GravixLayerBadRequestError("storage error");
+        } else {
+          throw new GravixLayerBadRequestError(errorMessage);
+        }
+      }
+
+      return Buffer.from(await response.arrayBuffer());
+    } finally {
+      this.client.baseURL = originalBaseURL;
+    }
+  }
+
+  /**
    * Delete a file permanently. This action cannot be undone.
    */
   async delete(fileId: string): Promise<FileDeleteResponse> {
