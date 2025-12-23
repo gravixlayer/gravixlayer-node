@@ -4,13 +4,24 @@ import {
   Deployment,
   DeploymentResponse,
 } from "../types/deployments";
+import { Accelerator } from "../types/accelerators";
 
 export class Deployments {
   constructor(private client: GravixLayer) {}
 
   async create(params: DeploymentCreate): Promise<DeploymentResponse> {
+    let deploymentName = params.deployment_name;
+
+    if (params.auto_retry) {
+      const timestamp = Math.floor(Date.now() / 1000)
+        .toString()
+        .slice(-4);
+      const suffix = Math.random().toString(36).substring(2, 6);
+      deploymentName = `${deploymentName}-${timestamp}${suffix}`;
+    }
+
     const data = {
-      deployment_name: params.deployment_name,
+      deployment_name: deploymentName,
       hw_type: params.hw_type || "dedicated",
       gpu_model: params.gpu_model,
       gpu_count: params.gpu_count || 1,
@@ -74,6 +85,23 @@ export class Deployments {
     } finally {
       (this.client as any).baseURL = originalBaseURL;
     }
+  }
+
+  async get(deploymentId: string): Promise<Deployment> {
+    const deployments = await this.list();
+    const deployment = deployments.find(
+      (d) =>
+        d.deployment_id === deploymentId || d.deployment_name === deploymentId,
+    );
+
+    if (!deployment) {
+      throw new Error(`Deployment with ID or Name '${deploymentId}' not found`);
+    }
+    return deployment;
+  }
+
+  async listHardware(): Promise<Accelerator[]> {
+    return this.client.accelerators.list();
   }
 
   async delete(deploymentId: string): Promise<Record<string, any>> {

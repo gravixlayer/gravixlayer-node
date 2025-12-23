@@ -47,21 +47,11 @@ export class ChatCompletions {
     });
 
     const data: any = {
+      ...params,
       model: params.model,
       messages: serializedMessages,
       stream: params.stream || false,
     };
-
-    if (params.temperature !== undefined) data.temperature = params.temperature;
-    if (params.max_tokens !== undefined) data.max_tokens = params.max_tokens;
-    if (params.top_p !== undefined) data.top_p = params.top_p;
-    if (params.frequency_penalty !== undefined)
-      data.frequency_penalty = params.frequency_penalty;
-    if (params.presence_penalty !== undefined)
-      data.presence_penalty = params.presence_penalty;
-    if (params.stop !== undefined) data.stop = params.stop;
-    if (params.tools !== undefined) data.tools = params.tools;
-    if (params.tool_choice !== undefined) data.tool_choice = params.tool_choice;
 
     return params.stream
       ? this._createStream(data)

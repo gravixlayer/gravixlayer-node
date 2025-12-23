@@ -138,6 +138,7 @@ export class Memory {
         {
           id: memoryId,
           memory: messages as string,
+          metadata: memoryMetadata,
           event: "ADD",
         },
       ],

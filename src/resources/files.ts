@@ -297,9 +297,9 @@ export class Files {
       const result = await response.json();
 
       return {
-        message: result.message || "",
-        file_id: result.file_id || "",
-        file_name: result.file_name || "",
+        message: result.message || "File deleted",
+        file_id: result.file_id || result.id || "",
+        file_name: result.file_name || result.filename || "",
       };
     } finally {
       this.client.baseURL = originalBaseURL;

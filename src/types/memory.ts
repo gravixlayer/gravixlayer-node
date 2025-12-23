@@ -84,6 +84,7 @@ export interface MemoryResponse {
     id: string;
     memory: string;
     event: string;
+    metadata?: Record<string, any>;
   }>;
 }
 

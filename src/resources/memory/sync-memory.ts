@@ -237,6 +237,7 @@ export class SyncMemory {
         {
           id: memoryId,
           memory: messages as string,
+          metadata: finalMetadata,
           event: "ADD",
         },
       ],

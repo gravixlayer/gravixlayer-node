@@ -109,6 +109,36 @@ export class GravixLayer {
     this.sandbox = new SandboxResource(this);
   }
 
+  /**
+   * Create a memory instance with required configuration.
+   *
+   * @param embeddingModel Model for text embeddings
+   * @param inferenceModel Model for memory inference
+   * @param indexName Name of the memory index
+   * @param cloudProvider Cloud provider (AWS, GCP, Azure)
+   * @param region Cloud region
+   * @param deleteProtection Enable delete protection (default: false)
+   * @returns Configured memory instance
+   */
+  memory(
+    embeddingModel: string,
+    inferenceModel: string,
+    indexName: string,
+    cloudProvider: string,
+    region: string,
+    deleteProtection: boolean = false,
+  ): SyncMemory {
+    return new SyncMemory(
+      this,
+      embeddingModel,
+      inferenceModel,
+      indexName,
+      cloudProvider,
+      region,
+      deleteProtection,
+    );
+  }
+
   async _makeRequest(
     method: string,
     endpoint: string,

@@ -17,13 +17,14 @@ export class Embeddings {
 
   async create(params: EmbeddingCreateParams): Promise<EmbeddingResponse> {
     const data: any = {
+      ...params,
       model: params.model,
       input: params.input,
     };
 
-    if (params.encoding_format) data.encoding_format = params.encoding_format;
-    if (params.dimensions) data.dimensions = params.dimensions;
-    if (params.user) data.user = params.user;
+    if (!data.encoding_format) {
+      data.encoding_format = "float";
+    }
 
     const response = await this.client._makeRequest("POST", "embeddings", data);
     const responseData = await response.json();

@@ -6,6 +6,7 @@ export interface DeploymentCreate {
   min_replicas?: number;
   max_replicas?: number;
   hw_type?: string;
+  auto_retry?: boolean;
 }
 
 export interface Deployment {
