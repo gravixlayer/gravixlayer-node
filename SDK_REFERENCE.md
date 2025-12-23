@@ -428,3 +428,70 @@ await sandbox.filesystem.delete("test.txt");
 // Kill Instance
 await sandbox.kill();
 ```
+
+## SDK Development Guide
+
+### Setup
+
+1.  **Prerequisites**: Ensure you have Node.js (v16+) and npm/yarn/pnpm installed.
+2.  **Install Dependencies**:
+    ```bash
+    npm install
+    ```
+3.  **Build**:
+    The SDK uses `tsup` for bundling.
+    ```bash
+    npm run build
+    ```
+    To watch for changes:
+    ```bash
+    npm run dev
+    ```
+
+### Testing
+
+The project uses custom test scripts located in the `test/` directory.
+
+*   **Run All Tests**:
+    ```bash
+    npm run test:all
+    ```
+*   **Run Unit Tests**:
+    ```bash
+    npm run test:unit
+    ```
+*   **Run Integration Tests**:
+    ```bash
+    npm run test:integration
+    ```
+
+### Code Quality
+
+*   **Linting**:
+    ```bash
+    npm run lint
+    ```
+*   **Formatting**:
+    ```bash
+    npm run format
+    ```
+*   **Type Checking**:
+    ```bash
+    npm run type-check
+    ```
+
+### Making Changes
+
+1.  **Structure**: Source code is in `src/`. Resources are organized in `src/resources/`.
+2.  **Adding a Resource**:
+    *   Create a new file in `src/resources/`.
+    *   Define the class and methods.
+    *   Export it in `src/index.ts`.
+    *   Instantiate it in `src/client.ts`.
+3.  **Updating Types**: Add or update interfaces in `src/types/`.
+
+### Before Submitting
+
+1.  Ensure all tests pass: `npm run test:all`
+2.  Run full analysis: `npm run analyze`
+3.  Update documentation if API changes.
