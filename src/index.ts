@@ -1,5 +1,6 @@
 import { GravixLayer } from "./client";
 
+// Main entry point for the SDK
 export { GravixLayer, type GravixLayerOptions } from "./client";
 export { Memory } from "./resources/memory/memory";
 export { SyncMemory } from "./resources/memory/sync-memory";
