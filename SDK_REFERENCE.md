@@ -429,111 +429,90 @@ await sandbox.filesystem.delete("test.txt");
 await sandbox.kill();
 ```
 
-## SDK Development Guide
+## Maintainer's Handover Guide
 
-### Setup
+This section is designed for new developers taking ownership of the SDK. It covers architecture, workflows, and release processes.
 
-1.  **Prerequisites**: Ensure you have Node.js (v16+) and npm/yarn/pnpm installed.
-2.  **Install Dependencies**:
+### 1. Project Architecture
+
+The SDK is built with **TypeScript** and compiled to both **ESM** and **CJS** using `tsup`.
+
+*   **`src/index.ts`**: The public entry point. Exports all classes, types, and the main `GravixLayer` client.
+*   **`src/client.ts`**: Contains the `GravixLayer` class. This is the heart of the SDK. It initializes the HTTP client and instantiates all resource classes (e.g., `this.chat = new Chat(this)`).
+*   **`src/resources/`**: Contains the API resource definitions.
+    *   Each file (e.g., `chat/completions.ts`) typically corresponds to a specific API domain.
+    *   Resources inherit from a base `APIResource` (or similar pattern) to share HTTP context.
+*   **`src/types/`**: TypeScript interfaces and type definitions. Kept separate to keep logic files clean.
+*   **`scripts/`**: Automation scripts. `publish.cjs` handles the entire release lifecycle.
+
+### 2. Development Workflow
+
+#### Setup
+```bash
+npm install
+```
+
+#### Building
+The project uses `tsup` for fast bundling.
+```bash
+npm run build      # Production build
+npm run dev        # Watch mode for development
+```
+
+#### Testing
+Tests are located in `test/`. They are currently a mix of unit and integration scripts.
+```bash
+npm run test:all   # Run everything
+npm run test:unit  # Fast unit tests
+```
+
+### 3. How to Add a New Feature
+
+**Scenario**: You need to add a new API resource called `FineTuning`.
+
+1.  **Create the Resource**:
+    *   Create `src/resources/fine-tuning.ts`.
+    *   Implement the class `FineTuning` with methods like `create()`, `list()`.
+2.  **Define Types**:
+    *   Create `src/types/fine-tuning.ts`.
+    *   Export interfaces for requests and responses.
+3.  **Register in Client**:
+    *   Open `src/client.ts`.
+    *   Import `FineTuning`.
+    *   Add `fineTuning: FineTuning;` to the class properties.
+    *   Initialize it in the constructor: `this.fineTuning = new FineTuning(this);`.
+4.  **Export**:
+    *   Open `src/index.ts`.
+    *   Export the class and types: `export { FineTuning } from "./resources/fine-tuning";`.
+
+### 4. Release Process
+
+The release process is fully automated via the `scripts/publish.cjs` script.
+
+**To publish a new version:**
+1.  Ensure you are on the `main` branch and up to date.
+2.  Run:
     ```bash
-    npm install
+    npm run publish
     ```
-3.  **Build**:
-    The SDK uses `tsup` for bundling.
-    ```bash
-    npm run build
-    ```
-    To watch for changes:
-    ```bash
-    npm run dev
-    ```
+3.  **What this script does**:
+    *   Checks git status.
+    *   Bumps the version in `package.json` (patch release by default).
+    *   Commits the change: `chore: release vX.Y.Z`.
+    *   Creates a git tag `vX.Y.Z`.
+    *   Pushes commits and tags to GitHub.
+    *   **GitHub Actions** detects the tag and publishes to NPM automatically.
 
-### Testing
-
-The project uses custom test scripts located in the `test/` directory.
-
-*   **Run All Tests**:
-    ```bash
-    npm run test:all
-    ```
-*   **Run Unit Tests**:
-    ```bash
-    npm run test:unit
-    ```
-*   **Run Integration Tests**:
-    ```bash
-    npm run test:integration
-    ```
-
-### Code Quality
-
-*   **Linting**:
-    ```bash
-    npm run lint
-    ```
-*   **Formatting**:
-    ```bash
-    npm run format
-    ```
-*   **Type Checking**:
-    ```bash
-    npm run type-check
-    ```
-
-### Making Changes
-
-1.  **Structure**: Source code is in `src/`. Resources are organized in `src/resources/`.
-2.  **Adding a Resource**:
-    *   Create a new file in `src/resources/`.
-    *   Define the class and methods.
-    *   Export it in `src/index.ts`.
-    *   Instantiate it in `src/client.ts`.
-3.  **Updating Types**: Add or update interfaces in `src/types/`.
-
-### Before Submitting
-
-1.  Ensure all tests pass: `npm run test:all`
-2.  Run full analysis: `npm run analyze`
-3.  Update documentation if API changes.
-
-### Troubleshooting
+### 5. Troubleshooting
 
 #### NPM Publish Fails: "Access token expired or revoked"
-
-If the build fails with `npm notice Access token expired or revoked`, it means the NPM token in GitHub Secrets is invalid.
-
-**Fix:**
-
-1.  **Generate a New Token**:
-    *   Log in to [npmjs.com](https://www.npmjs.com/).
-    *   Go to **Access Tokens**.
-    *   Click **Generate New Token**.
-    *   Select **Automation** (suitable for CI/CD workflows).
-    *   Copy the generated token string.
-
-2.  **Update GitHub Secrets**:
-    *   Go to your GitHub repository: `gravixlayer/gravixlayer-node`.
-    *   Navigate to **Settings** > **Secrets and variables** > **Actions**.
-    *   Find the secret named `NPM_TOKEN` (or `NPM_AUTH_TOKEN`).
-    *   Update it with the new token you just generated.
-
-3.  **Retry the Build**:
-    *   Go to the **Actions** tab in your GitHub repo.
-    *   Select the failed workflow run.
-    *   Click **Re-run jobs**.
+*   **Cause**: The `NPM_TOKEN` in GitHub Secrets is invalid.
+*   **Fix**: Generate a new **Automation** token on npmjs.com and update the GitHub Secret.
 
 #### NPM Publish Fails: "Two-factor authentication ... required"
+*   **Cause**: The token enforces 2FA, which CI cannot provide.
+*   **Fix**: Generate a **Classic Token** on npmjs.com and select **"Automation"** (skips 2FA). Update GitHub Secret.
 
-If the build fails with `npm error 403 ... Two-factor authentication ... is required`, it means the token you are using enforces 2FA, which CI/CD cannot provide.
-
-**Fix:**
-
-1.  **Generate a Classic Automation Token**:
-    *   Log in to [npmjs.com](https://www.npmjs.com/).
-    *   Go to **Access Tokens**.
-    *   Click **Generate New Token** > **Classic Token**.
-    *   **Select "Automation"**. This is critical. It allows the token to bypass 2FA for CI workflows.
-    *   Copy the generated token string.
-
-2.  **Update GitHub Secrets**:
-    *   Update the `NPM_TOKEN` secret in your GitHub repository with this new token.
+#### NPM Publish Fails: "You do not have permission to publish"
+*   **Cause**: The token belongs to a user who is not a maintainer of the `gravixlayer` package.
+*   **Fix**: Ask the package owner to add you: `npm owner add <username> gravixlayer`.
