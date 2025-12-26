@@ -1,3 +1,91 @@
+## Maintainer's Handover Guide
+
+This section is designed for new developers taking ownership of the SDK. It covers architecture, workflows, and release processes.
+
+### 1. Project Architecture
+
+The SDK is built with **TypeScript** and compiled to both **ESM** and **CJS** using `tsup`.
+
+*   **`src/index.ts`**: The public entry point. Exports all classes, types, and the main `GravixLayer` client.
+*   **`src/client.ts`**: Contains the `GravixLayer` class. This is the heart of the SDK. It initializes the HTTP client and instantiates all resource classes (e.g., `this.chat = new Chat(this)`).
+*   **`src/resources/`**: Contains the API resource definitions.
+    *   Each file (e.g., `chat/completions.ts`) typically corresponds to a specific API domain.
+    *   Resources inherit from a base `APIResource` (or similar pattern) to share HTTP context.
+*   **`src/types/`**: TypeScript interfaces and type definitions. Kept separate to keep logic files clean.
+*   **`scripts/`**: Automation scripts. `publish.cjs` handles the entire release lifecycle.
+
+### 2. Development Workflow
+
+#### Setup
+```bash
+npm install
+```
+
+#### Building
+The project uses `tsup` for fast bundling.
+```bash
+npm run build      # Production build
+npm run dev        # Watch mode for development
+```
+
+#### Testing
+Tests are located in `test/`. They are currently a mix of unit and integration scripts.
+```bash
+npm run test:all   # Run everything
+npm run test:unit  # Fast unit tests
+```
+
+### 3. How to Add a New Feature
+
+**Scenario**: You need to add a new API resource called `FineTuning`.
+
+1.  **Create the Resource**:
+    *   Create `src/resources/fine-tuning.ts`.
+    *   Implement the class `FineTuning` with methods like `create()`, `list()`.
+2.  **Define Types**:
+    *   Create `src/types/fine-tuning.ts`.
+    *   Export interfaces for requests and responses.
+3.  **Register in Client**:
+    *   Open `src/client.ts`.
+    *   Import `FineTuning`.
+    *   Add `fineTuning: FineTuning;` to the class properties.
+    *   Initialize it in the constructor: `this.fineTuning = new FineTuning(this);`.
+4.  **Export**:
+    *   Open `src/index.ts`.
+    *   Export the class and types: `export { FineTuning } from "./resources/fine-tuning";`.
+
+### 4. Release Process
+
+The release process is fully automated via the `scripts/publish.cjs` script.
+
+**To publish a new version:**
+1.  Ensure you are on the `main` branch and up to date.
+2.  Run:
+    ```bash
+    npm run publish
+    ```
+3.  **What this script does**:
+    *   Checks git status.
+    *   Bumps the version in `package.json` (patch release by default).
+    *   Commits the change: `chore: release vX.Y.Z`.
+    *   Creates a git tag `vX.Y.Z`.
+    *   Pushes commits and tags to GitHub.
+    *   **GitHub Actions** detects the tag and publishes to NPM automatically.
+
+### 5. Troubleshooting
+
+#### NPM Publish Fails: "Access token expired or revoked"
+*   **Cause**: The `NPM_TOKEN` in GitHub Secrets is invalid.
+*   **Fix**: Generate a new **Automation** token on npmjs.com and update the GitHub Secret.
+
+#### NPM Publish Fails: "Two-factor authentication ... required"
+*   **Cause**: The token enforces 2FA, which CI cannot provide.
+*   **Fix**: Generate a **Classic Token** on npmjs.com and select **"Automation"** (skips 2FA). Update GitHub Secret.
+
+#### NPM Publish Fails: "You do not have permission to publish"
+*   **Cause**: The token belongs to a user who is not a maintainer of the `gravixlayer` package.
+*   **Fix**: Ask the package owner to add you: `npm owner add <username> gravixlayer`.
+
 # GravixLayer Node.js SDK Reference
 
 ## Client Initialization
@@ -429,90 +517,4 @@ await sandbox.filesystem.delete("test.txt");
 await sandbox.kill();
 ```
 
-## Maintainer's Handover Guide
 
-This section is designed for new developers taking ownership of the SDK. It covers architecture, workflows, and release processes.
-
-### 1. Project Architecture
-
-The SDK is built with **TypeScript** and compiled to both **ESM** and **CJS** using `tsup`.
-
-*   **`src/index.ts`**: The public entry point. Exports all classes, types, and the main `GravixLayer` client.
-*   **`src/client.ts`**: Contains the `GravixLayer` class. This is the heart of the SDK. It initializes the HTTP client and instantiates all resource classes (e.g., `this.chat = new Chat(this)`).
-*   **`src/resources/`**: Contains the API resource definitions.
-    *   Each file (e.g., `chat/completions.ts`) typically corresponds to a specific API domain.
-    *   Resources inherit from a base `APIResource` (or similar pattern) to share HTTP context.
-*   **`src/types/`**: TypeScript interfaces and type definitions. Kept separate to keep logic files clean.
-*   **`scripts/`**: Automation scripts. `publish.cjs` handles the entire release lifecycle.
-
-### 2. Development Workflow
-
-#### Setup
-```bash
-npm install
-```
-
-#### Building
-The project uses `tsup` for fast bundling.
-```bash
-npm run build      # Production build
-npm run dev        # Watch mode for development
-```
-
-#### Testing
-Tests are located in `test/`. They are currently a mix of unit and integration scripts.
-```bash
-npm run test:all   # Run everything
-npm run test:unit  # Fast unit tests
-```
-
-### 3. How to Add a New Feature
-
-**Scenario**: You need to add a new API resource called `FineTuning`.
-
-1.  **Create the Resource**:
-    *   Create `src/resources/fine-tuning.ts`.
-    *   Implement the class `FineTuning` with methods like `create()`, `list()`.
-2.  **Define Types**:
-    *   Create `src/types/fine-tuning.ts`.
-    *   Export interfaces for requests and responses.
-3.  **Register in Client**:
-    *   Open `src/client.ts`.
-    *   Import `FineTuning`.
-    *   Add `fineTuning: FineTuning;` to the class properties.
-    *   Initialize it in the constructor: `this.fineTuning = new FineTuning(this);`.
-4.  **Export**:
-    *   Open `src/index.ts`.
-    *   Export the class and types: `export { FineTuning } from "./resources/fine-tuning";`.
-
-### 4. Release Process
-
-The release process is fully automated via the `scripts/publish.cjs` script.
-
-**To publish a new version:**
-1.  Ensure you are on the `main` branch and up to date.
-2.  Run:
-    ```bash
-    npm run publish
-    ```
-3.  **What this script does**:
-    *   Checks git status.
-    *   Bumps the version in `package.json` (patch release by default).
-    *   Commits the change: `chore: release vX.Y.Z`.
-    *   Creates a git tag `vX.Y.Z`.
-    *   Pushes commits and tags to GitHub.
-    *   **GitHub Actions** detects the tag and publishes to NPM automatically.
-
-### 5. Troubleshooting
-
-#### NPM Publish Fails: "Access token expired or revoked"
-*   **Cause**: The `NPM_TOKEN` in GitHub Secrets is invalid.
-*   **Fix**: Generate a new **Automation** token on npmjs.com and update the GitHub Secret.
-
-#### NPM Publish Fails: "Two-factor authentication ... required"
-*   **Cause**: The token enforces 2FA, which CI cannot provide.
-*   **Fix**: Generate a **Classic Token** on npmjs.com and select **"Automation"** (skips 2FA). Update GitHub Secret.
-
-#### NPM Publish Fails: "You do not have permission to publish"
-*   **Cause**: The token belongs to a user who is not a maintainer of the `gravixlayer` package.
-*   **Fix**: Ask the package owner to add you: `npm owner add <username> gravixlayer`.
