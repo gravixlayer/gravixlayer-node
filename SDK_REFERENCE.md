@@ -1,8 +1,8 @@
-## Maintainer's Handover Guide
+## SDK Documentation
 
-This section is designed for new developers taking ownership of the SDK. It covers architecture, workflows, and release processes.
+This documentation covers the codebase structure, development workflows, and release processes for the SDK.
 
-### 1. Project Architecture
+### 1. Codebase Structure
 
 The SDK is built with **TypeScript** and compiled to both **ESM** and **CJS** using `tsup`.
 
@@ -516,5 +516,32 @@ await sandbox.filesystem.delete("test.txt");
 // Kill Instance
 await sandbox.kill();
 ```
+
+### 6. SDK Architecture
+
+#### Build System (`tsup`)
+The SDK uses `tsup` (TypeScript-based bundler) to generate the distribution files.
+*   **Configuration**: Defined in `tsup.config.ts`.
+*   **Dual Output**: It builds both **ESM** (`dist/index.js`) and **CJS** (`dist/index.cjs`) formats simultaneously. This ensures compatibility with both modern `import` and legacy `require` consumers.
+*   **CLI Build**: A separate build target compiles `src/cli.ts` to `dist/cli.cjs` and adds the `#!/usr/bin/env node` shebang.
+*   **Type Definitions**: `d.ts` files are generated automatically to provide IntelliSense support.
+
+#### Package Exports
+The `package.json` uses the `exports` field to conditionally serve the correct file:
+```json
+"exports": {
+  ".": {
+    "import": "./dist/index.js",  // For ESM consumers
+    "require": "./dist/index.cjs", // For CJS consumers
+    "types": "./dist/index.d.ts"   // For TypeScript
+  }
+}
+```
+
+#### Client-Resource Pattern
+The SDK follows a hierarchical dependency injection pattern:
+1.  **`GravixLayer` (Client)**: Holds the shared state (API key, base URL, HTTP headers).
+2.  **Resources**: Classes like `Chat`, `Embeddings` are instantiated in the client's constructor and receive the client instance (`this`).
+3.  **Context Sharing**: Resources use the client's helper methods (`client.post()`, `client.get()`) to make requests, ensuring all requests share the same configuration.
 
 
