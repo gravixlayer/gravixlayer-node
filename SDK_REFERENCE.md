@@ -495,3 +495,29 @@ The project uses custom test scripts located in the `test/` directory.
 1.  Ensure all tests pass: `npm run test:all`
 2.  Run full analysis: `npm run analyze`
 3.  Update documentation if API changes.
+
+### Troubleshooting
+
+#### NPM Publish Fails: "Access token expired or revoked"
+
+If the build fails with `npm notice Access token expired or revoked`, it means the NPM token in GitHub Secrets is invalid.
+
+**Fix:**
+
+1.  **Generate a New Token**:
+    *   Log in to [npmjs.com](https://www.npmjs.com/).
+    *   Go to **Access Tokens**.
+    *   Click **Generate New Token**.
+    *   Select **Automation** (suitable for CI/CD workflows).
+    *   Copy the generated token string.
+
+2.  **Update GitHub Secrets**:
+    *   Go to your GitHub repository: `gravixlayer/gravixlayer-node`.
+    *   Navigate to **Settings** > **Secrets and variables** > **Actions**.
+    *   Find the secret named `NPM_TOKEN` (or `NPM_AUTH_TOKEN`).
+    *   Update it with the new token you just generated.
+
+3.  **Retry the Build**:
+    *   Go to the **Actions** tab in your GitHub repo.
+    *   Select the failed workflow run.
+    *   Click **Re-run jobs**.
