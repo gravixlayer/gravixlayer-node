@@ -521,3 +521,19 @@ If the build fails with `npm notice Access token expired or revoked`, it means t
     *   Go to the **Actions** tab in your GitHub repo.
     *   Select the failed workflow run.
     *   Click **Re-run jobs**.
+
+#### NPM Publish Fails: "Two-factor authentication ... required"
+
+If the build fails with `npm error 403 ... Two-factor authentication ... is required`, it means the token you are using enforces 2FA, which CI/CD cannot provide.
+
+**Fix:**
+
+1.  **Generate a Classic Automation Token**:
+    *   Log in to [npmjs.com](https://www.npmjs.com/).
+    *   Go to **Access Tokens**.
+    *   Click **Generate New Token** > **Classic Token**.
+    *   **Select "Automation"**. This is critical. It allows the token to bypass 2FA for CI workflows.
+    *   Copy the generated token string.
+
+2.  **Update GitHub Secrets**:
+    *   Update the `NPM_TOKEN` secret in your GitHub repository with this new token.
