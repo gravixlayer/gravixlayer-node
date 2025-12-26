@@ -8,6 +8,7 @@ export { SyncMemory } from "./resources/memory/sync-memory";
 export { AsyncGravixLayer, type AsyncGravixLayerOptions } from "./async-client";
 
 // Chat types
+// Exporting types for better developer experience
 export type {
   ChatCompletion,
   ChatCompletionMessage,
